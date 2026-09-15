@@ -1,0 +1,94 @@
+# Quantia API — Project Rules (always active)
+
+## Product
+Quantia is a web platform to manage research projects of the INNOVATEK'S / GITEMOS
+research seedbed. This repository contains ONLY the backend: a NestJS API plus a
+BullMQ worker. Users are Researchers, Coordinators and Administrators.
+
+## Locked stack — NEVER change without written approval
+- Runtime: Node.js 22 LTS, TypeScript strict mode.
+- Framework: NestJS (REST + Socket.io gateway in the SAME container).
+- Database: PostgreSQL on Supabase. Pooler port 6543 for the app, DIRECT_URL 5432
+  for migrations only.
+- Cache / queues / socket fanout: Redis (BullMQ + Socket.io Redis adapter).
+- External source: Notion API (collaborative capture layer) + signed webhooks.
+- Storage: Supabase Storage, private buckets, signed short-lived URLs only.
+- Validation: class-validator + class-transformer DTOs; shared types in
+  `@quantia/contracts` (TS types + Zod schemas).
+- Packaging: multi-stage Dockerfile on `node:22-alpine`, non-root user, HEALTHCHECK.
+- Deploy: Railway (Hobby plan) for api + worker + Redis; Postgres on Supabase;
+  frontend on Vercel. Render is the only approved fallback.
+- Tests: Jest + Supertest.
+
+## Architecture invariants (non-negotiable)
+1. The API is the ONLY component that talks to Supabase, Notion and Redis. Never
+   suggest client-side access to those services.
+2. Postgres is the system of record. Notion is the capture layer. Every Notion
+   entity has a mirror table with `notion_page_id`, `last_edited_time`,
+   `synced_at`, `sync_status`.
+3. Budget and financial execution live ONLY in Postgres. Never replicated to Notion.
+4. Nothing slow runs on the HTTP thread: Notion sync, e-mail, PDF and Excel
+   generation belong to the BullMQ worker.
+5. One NestJS module per business domain: controller + service + repository + DTOs.
+   Zero domain logic in controllers.
+6. Contract before implementation: every endpoint is born with its input DTO and
+   response type in `@quantia/contracts`, even if the service is still a stub.
+7. All REST routes live under `/api/v1` via `app.enableVersioning()`. One single
+   WebSocket gateway with namespaces `/projects` and `/notifications`, rooms by
+   `projectId`.
+8. Socket.io never runs on serverless functions.
+
+## Security defaults from day one
+- Global `JwtAuthGuard` + `RolesGuard`, deny by default. Public endpoints must be
+  explicitly marked with `@Public()`.
+- Global `ValidationPipe` with `whitelist: true`, `forbidNonWhitelisted: true`,
+  `transform: true`.
+- Access JWT 15 min + rotating, revocable refresh token. Passwords with argon2
+  (or bcrypt cost >= 12).
+- Object-level authorization on EVERY query that receives an id: filter by project
+  membership. Never trust a `projectId` coming from the request body.
+- Never return raw entities: always response DTOs. No password hashes, internal
+  tokens or Notion ids in responses.
+- Secrets only via environment variables. No `.env` committed, no secrets in logs,
+  no secrets baked into the image.
+
+## Coding conventions
+- One class per file. DTO naming: `CreateProjectDto`, `UpdateProjectDto`,
+  `ProjectResponseDto`.
+- Parameterised queries through the ORM. Raw SQL is forbidden unless justified in a
+  code comment AND using bound parameters.
+- Mandatory pagination on every list endpoint (`page`, `pageSize` with a hard max).
+- Normalised errors through a global `HttpExceptionFilter`: same JSON shape for 400,
+  401, 403, 404, 409, 500. Never leak stack traces, table names or versions.
+- Structured JSON logging with `requestId`; automatic redaction of passwords,
+  tokens and `Authorization` headers.
+- Migrations are versioned in the repo and applied by the `migrate` service. Never
+  manual changes to a deployed database.
+- Branches `feature/*` -> PR -> `main`. No direct commits to `main`.
+  Conventional Commits.
+
+## Critical DON'Ts
+- Do NOT add a new dependency, ORM, framework or hosting provider without asking first.
+- Do NOT replace Socket.io with SSE/polling, Redis with in-memory state, or Supabase
+  with another database.
+- Do NOT put the Supabase `service_role` key or the Notion integration token anywhere
+  reachable by the browser.
+- Do NOT call the Notion API from an HTTP request handler; enqueue a job (limit 3 req/s,
+  exponential backoff on 429).
+- Do NOT create public storage buckets or unsigned download URLs.
+- Do NOT disable guards, validation pipes, helmet or CORS allowlists "to make it work".
+- Do NOT widen CORS to `*`. Allowlist = production domain + Vercel preview pattern.
+- Do NOT skip tests or mark them as skipped to make CI pass.
+
+## Verification before saying a task is done
+1. `npm run lint` and typecheck clean, zero errors.
+2. Unit + e2e tests written AND passing; service coverage >= 70%.
+3. Endpoint documented in OpenAPI/Swagger with its DTOs.
+4. Auth checks proven: 401 without token, 403 with the wrong role, 200 with the right one.
+5. `docker compose up` still boots and `/api/v1/health` returns 200.
+6. No hardcoded secrets, urls or magic numbers; all config through the validated ConfigModule.
+
+## Pointers — read before working on these areas
+- `.cursor/rules/api-development.md` — build phases F0..F7 and their exit criteria.
+- `.cursor/rules/security-hardening.md` — hardening phases S1..S6 (OWASP API Top 10 2023).
+- `.cursor/rules/pentesting.md` — offensive verification phases P0..P6 (staging only).
