@@ -6,4 +6,8 @@ export default (): EnvConfig => ({
   DATABASE_URL: process.env.DATABASE_URL ?? '',
   DIRECT_URL: process.env.DIRECT_URL ?? '',
   REDIS_URL: process.env.REDIS_URL ?? '',
+  JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET ?? '',
+  JWT_ACCESS_TTL: process.env.JWT_ACCESS_TTL ?? '15m',
+  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET ?? '',
+  JWT_REFRESH_TTL: process.env.JWT_REFRESH_TTL ?? '7d',
 });

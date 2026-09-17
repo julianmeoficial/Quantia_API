@@ -8,10 +8,61 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-/// Placeholder model for F0 bootstrap migrations. Removed or replaced in F1+.
-model BootstrapMeta {
-  id        Int      @id @default(autoincrement())
+enum RoleName {
+  INVESTIGADOR
+  COORDINADOR
+  ADMINISTRADOR
+}
+
+model Role {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      RoleName @unique
   createdAt DateTime @default(now()) @map("created_at")
 
-  @@map("bootstrap_meta")
+  userRoles UserRole[]
+
+  @@map("roles")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  fullName     String   @map("full_name")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  userRoles     UserRole[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model UserRole {
+  userId String @map("user_id") @db.Uuid
+  roleId String @map("role_id") @db.Uuid
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model RefreshToken {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  tokenHash   String    @unique @map("token_hash")
+  familyId    String    @map("family_id") @db.Uuid
+  expiresAt   DateTime  @map("expires_at")
+  revokedAt   DateTime? @map("revoked_at")
+  replacedById String?  @map("replaced_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
 }

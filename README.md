@@ -45,8 +45,34 @@ Respuesta esperada: HTTP **200** con `database` y `redis` en estado `up`.
 | `DATABASE_URL` | Conexión Postgres (app) | `postgresql://quantia:quantia@postgres:5432/quantia` |
 | `DIRECT_URL` | Conexión directa (migraciones) | `postgresql://quantia:quantia@postgres:5432/quantia` |
 | `REDIS_URL` | Conexión Redis | `redis://redis:6379` |
+| `JWT_ACCESS_SECRET` | Secreto JWT acceso (≥ 32 chars) | (dev secret en `.env.example`) |
+| `JWT_ACCESS_TTL` | Vida del access token | `15m` |
+| `JWT_REFRESH_SECRET` | Secreto auxiliar refresh (≥ 32) | (dev secret en `.env.example`) |
+| `JWT_REFRESH_TTL` | Vida del refresh token | `7d` |
 
 La aplicación **no arranca** si falta alguna variable obligatoria.
+
+## Auth (F1)
+
+| Método | Ruta | Acceso |
+|--------|------|--------|
+| `POST` | `/api/v1/auth/login` | Público |
+| `POST` | `/api/v1/auth/refresh` | Público |
+| `POST` | `/api/v1/auth/logout` | Público (body: `refreshToken`) |
+| `GET` | `/api/v1/users/me` | JWT |
+| CRUD | `/api/v1/users` | JWT + rol `ADMINISTRADOR` |
+
+Roles: `INVESTIGADOR`, `COORDINADOR`, `ADMINISTRADOR`. Passwords con argon2. Detalle: [`docs/architecture/auth.md`](docs/architecture/auth.md).
+
+Swagger (no producción): `http://localhost:3000/api/docs`
+
+Usuarios de desarrollo (tras `npm run prisma:seed` contra Postgres en `localhost:5433`):
+
+| Email | Password | Rol |
+|-------|----------|-----|
+| `admin@quantia.local` | `AdminPass1!` | ADMINISTRADOR |
+| `coord@quantia.local` | `CoordPass1!` | COORDINADOR |
+| `researcher@quantia.local` | `ResearchPass1!` | INVESTIGADOR |
 
 ## Scripts
 
@@ -60,18 +86,22 @@ La aplicación **no arranca** si falta alguna variable obligatoria.
 | `npm run test` | Tests unitarios |
 | `npm run test:e2e` | Tests e2e (requiere Postgres + Redis) |
 | `npm run prisma:migrate:dev` | Crear/aplicar migraciones en dev |
+| `npm run prisma:seed` | Usuarios demo (admin/coord/researcher) |
 
 ## Estructura del repositorio
 
 ```
 src/
+  auth/         Login, refresh, logout, JWT
+  users/        /users/me + CRUD admin
+  common/       Guards, decorators, filters
   config/       ConfigModule + validación Zod
   database/     PrismaService
   redis/        RedisService
-  health/       GET /api/v1/health
+  health/       GET /api/v1/health (@Public)
   worker.ts     Entry del worker
 packages/
-  contracts/    @quantia/contracts (stub F0)
+  contracts/    @quantia/contracts (tipos + Zod auth/users)
 prisma/         Schema y migraciones
 test/           E2E
 docs/           Documentación técnica
@@ -93,11 +123,12 @@ GitHub Actions ejecuta en cada PR y push a `main`:
 |-----------|-----------|
 | [`docs/architecture/overview.md`](docs/architecture/overview.md) | Arquitectura, árbol de paquetería, guía de carpetas |
 | [`docs/architecture/docker.md`](docs/architecture/docker.md) | Imágenes y contenedores Docker, stages, flujo de arranque |
+| [`docs/architecture/auth.md`](docs/architecture/auth.md) | Auth JWT, roles, refresh rotativo (F1 / ENG-119) |
 | [`docs/development/local-setup.md`](docs/development/local-setup.md) | Cómo correr localmente (Compose o host) |
 
 ## Roadmap
 
-Desarrollo incremental F0–F7. Issue actual: [ENG-121 — F0 Bootstrap](https://linear.app/brevku/issue/ENG-121/f0-bootstrap-del-repositorio-y-del-entorno).
+Desarrollo incremental F0–F7. Fase actual: [ENG-119 — F1 Auth](https://linear.app/brevku/issue/ENG-119/f1-autenticacion-usuarios-y-roles) (padre [ENG-116](https://linear.app/brevku/issue/ENG-116)).
 
 | Fase | Tema |
 |------|------|
