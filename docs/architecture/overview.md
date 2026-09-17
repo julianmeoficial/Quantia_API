@@ -76,56 +76,41 @@ flowchart TB
 
 ## Package tree
 
-Current repository layout after F0 bootstrap:
+Current repository layout after F2 domain:
 
 ```text
 quantia-api/
-├── .cursorrules                          # Always-on project constitution for the agent
+├── .cursorrules
 ├── .cursor/rules/
-│   ├── api-development.md                # Phases F0–F7 exit criteria
-│   ├── security-hardening.md             # Phases S1–S6 (OWASP API Top 10)
-│   └── pentesting.md                     # Phases P0–P6 (staging only)
-├── .github/workflows/
-│   └── ci.yml                            # lint · typecheck · tests · docker build
-├── packages/
-│   └── contracts/                        # @quantia/contracts — shared DTO/Zod stubs
-│       ├── package.json
-│       ├── tsconfig.json
-│       └── src/index.ts
+├── .github/workflows/ci.yml
+├── packages/contracts/src/
+│   ├── auth.ts · pagination.ts · projects.ts · tasks.ts · progress.ts · index.ts
 ├── prisma/
-│   ├── schema.prisma                     # Datasource + BootstrapMeta (placeholder)
+│   ├── schema.prisma                     # Users + Projects/Tasks/Progress
+│   ├── seed.ts
 │   └── migrations/
-│       ├── migration_lock.toml
-│       └── 20260915000000_init/          # Initial migration
+│       ├── 20260915000000_init/
+│       ├── 20260917000000_auth_users_roles/
+│       └── 20260918000000_projects_tasks_progress/
 ├── src/
-│   ├── main.ts                           # API entry → node dist/main.js
-│   ├── worker.ts                         # Worker entry → node dist/worker.js
-│   ├── app.module.ts                     # Root module for the HTTP API
-│   ├── worker.module.ts                  # Root module for the worker process
-│   ├── config/                           # Env loading + Zod fail-fast validation
-│   ├── database/                         # PrismaService (Postgres)
-│   ├── redis/                            # RedisService (ioredis)
-│   ├── health/                           # GET /api/v1/health (@Public)
-│   ├── auth/                             # Login / refresh / logout (F1)
-│   ├── users/                            # /users/me + admin CRUD (F1)
-│   └── common/                           # Guards, decorators, filters
-├── test/                                 # E2E (Supertest) against real Postgres/Redis
-├── docs/
-│   ├── architecture/overview.md          # This document
-│   └── development/local-setup.md        # How to run locally
-├── Dockerfile                            # Multi-stage: base → deps → build → runner | migrate
-├── docker-compose.yml                    # postgres · redis · migrate · api · worker
-├── .env.example                          # Required env template (never commit secrets)
-├── README.md
-└── CHANGELOG.md
+│   ├── main.ts · worker.ts · app.module.ts · worker.module.ts
+│   ├── config/ · database/ · redis/ · health/
+│   ├── auth/ · users/
+│   ├── projects/ · tasks/ · progress/    # F2 domain
+│   └── common/                           # Guards, filters, ProjectAccessService
+├── test/                                 # auth.e2e + domain.e2e
+├── docs/architecture/
+│   ├── overview.md · docker.md · auth.md · domain.md
+├── Dockerfile · docker-compose.yml · .env.example
+├── README.md · CHANGELOG.md
 ```
 
 Modules planned for later phases (siblings under `src/`):
 
 | Phase | Folder | Quantia function |
 |-------|--------|------------------|
-| F1 | `src/auth/`, `src/users/` | Login, JWT, roles (Investigador / Coordinador / Administrador) |
-| F2 | `src/projects/`, `src/tasks/`, `src/progress/` | Core research workflow |
+| F1 ✓ | `src/auth/`, `src/users/` | Login, JWT, roles |
+| F2 ✓ | `src/projects/`, `src/tasks/`, `src/progress/` | Core research workflow |
 | F3 | `src/notion/`, jobs in worker | Bidirectional Notion ↔ Postgres sync |
 | F4 | `src/realtime/` | Socket.io gateway, rooms by `projectId` |
 | F5 | `src/budget/`, `src/documents/`, `src/reports/` | Financial execution, Storage, PDF/Excel |
