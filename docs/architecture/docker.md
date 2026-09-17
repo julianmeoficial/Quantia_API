@@ -135,7 +135,7 @@ flowchart LR
 
 
 
-| Stage     | Qué hace                                                        | Quién lo usa                                                  |
+| Stage     | ¿Qué hace?                                                      | ¿Quién lo usa?                                                |
 | --------- | --------------------------------------------------------------- | ------------------------------------------------------------- |
 | `base`    | `WORKDIR /app` sobre Node 22 Alpine                             | Base común                                                    |
 | `deps`    | Copia manifests + `prisma/`, ejecuta `npm ci`                   | `build` y `migrate`                                           |
@@ -297,9 +297,9 @@ flowchart LR
 | Desde                 | Hostname / URL                        | Motivo                                          |
 | --------------------- | ------------------------------------- | ----------------------------------------------- |
 | Contenedores entre sí | `postgres`, `redis`                   | DNS interno de Compose (como en `.env.example`) |
-| MAC → API       | `http://localhost:3000/api/v1/health` | Puerto publicado                                |
-| MAC → Postgres  | `localhost:5433`                      | Mapeo host (ver `.env.test`)                    |
-| MAC → Redis     | `localhost:6379`                      | Mapeo host                                      |
+| MAC → API             | `http://localhost:3000/api/v1/health` | Puerto publicado                                |
+| MAC → Postgres        | `localhost:5433`                      | Mapeo host (ver `.env.test`)                    |
+| MAC → Redis           | `localhost:6379`                      | Mapeo host                                      |
 
 
 Si corres Prisma **en el host** (`npx prisma migrate deploy`), debes usar URLs con
@@ -314,7 +314,7 @@ Si corres Prisma **en el host** (`npx prisma migrate deploy`), debes usar URLs c
 Hoy Compose carga `[.env.example](../../.env.example)` vía `env_file` (desarrollo F0).
 
 
-| Variable            | ¿Quién la necesita?         | Uso                                                          |
+| Variable            | ¿Quién la necesita?       | Uso                                                          |
 | ------------------- | ------------------------- | ------------------------------------------------------------ |
 | `DATABASE_URL`      | api, worker, migrate      | Conexión Prisma (en Compose: host `postgres`)                |
 | `DIRECT_URL`        | migrate (y schema Prisma) | Conexión directa; en local = misma URL; en Supabase ≠ pooler |
@@ -377,7 +377,7 @@ docker compose down -v
 ## Relación con el criterio de salida F0 (ENG-121)
 
 
-| Criterio                      | ¿Cómo lo demuestra Docker?                        |
+| Criterio                      | ¿Cómo lo demuestra Docker?                      |
 | ----------------------------- | ----------------------------------------------- |
 | Un comando levanta el entorno | `docker compose up --build`                     |
 | Health real                   | Contenedor `api` **healthy** + `curl` → 200     |

@@ -11,6 +11,10 @@ env:
   DATABASE_URL: postgresql://quantia:quantia@localhost:5432/quantia
   DIRECT_URL: postgresql://quantia:quantia@localhost:5432/quantia
   REDIS_URL: redis://localhost:6379
+  JWT_ACCESS_SECRET: quantia-ci-access-secret-change-me-32chars
+  JWT_ACCESS_TTL: 15m
+  JWT_REFRESH_SECRET: quantia-ci-refresh-secret-change-me-32chars
+  JWT_REFRESH_TTL: 7d
 
 jobs:
   verify:

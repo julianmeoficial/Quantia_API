@@ -105,7 +105,10 @@ quantia-api/
 │   ├── config/                           # Env loading + Zod fail-fast validation
 │   ├── database/                         # PrismaService (Postgres)
 │   ├── redis/                            # RedisService (ioredis)
-│   └── health/                           # GET /api/v1/health
+│   ├── health/                           # GET /api/v1/health (@Public)
+│   ├── auth/                             # Login / refresh / logout (F1)
+│   ├── users/                            # /users/me + admin CRUD (F1)
+│   └── common/                           # Guards, decorators, filters
 ├── test/                                 # E2E (Supertest) against real Postgres/Redis
 ├── docs/
 │   ├── architecture/overview.md          # This document
@@ -271,6 +274,7 @@ Use this table to know where to look (and what to update) when changing the API:
 | Run the stack locally | [`docs/development/local-setup.md`](../development/local-setup.md) |
 | See high-level architecture (this file) | [`docs/architecture/overview.md`](./overview.md) |
 | Understand Docker images and containers | [`docs/architecture/docker.md`](./docker.md) |
+| Understand auth, JWT and roles (F1) | [`docs/architecture/auth.md`](./auth.md) |
 | Quick start for contributors | [`README.md`](../../README.md) |
 | Record user-visible changes | [`CHANGELOG.md`](../../CHANGELOG.md) |
 | Env var contract | [`.env.example`](../../.env.example) |

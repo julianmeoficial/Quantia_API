@@ -1,3 +1,4 @@
+import { Public } from '../common/decorators/public.decorator';
 import { Controller, Get } from '@nestjs/common';
 import { HealthCheck, HealthCheckService } from '@nestjs/terminus';
 import { PrismaHealthIndicator } from './indicators/prisma.health';
@@ -11,6 +12,7 @@ export class HealthController {
     private readonly redisHealth: RedisHealthIndicator,
   ) {}
 
+  @Public()
   @Get()
   @HealthCheck()
   check() {
