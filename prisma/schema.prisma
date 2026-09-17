@@ -14,6 +14,33 @@ enum RoleName {
   ADMINISTRADOR
 }
 
+enum ProjectStatus {
+  FORMULATION
+  ACTIVE
+  DELAYED
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum SyncStatus {
+  PENDING
+  SYNCED
+  FAILED
+}
+
 model Role {
   id        String   @id @default(uuid()) @db.Uuid
   name      RoleName @unique
@@ -33,8 +60,13 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  userRoles     UserRole[]
-  refreshTokens RefreshToken[]
+  userRoles            UserRole[]
+  refreshTokens        RefreshToken[]
+  coordinatedProjects  Project[]       @relation("ProjectCoordinator")
+  createdProjects      Project[]       @relation("ProjectCreator")
+  projectMemberships   ProjectMember[]
+  assignedTasks        Task[]          @relation("TaskAssignee")
+  progressEntries      Progress[]
 
   @@map("users")
 }
@@ -51,18 +83,111 @@ model UserRole {
 }
 
 model RefreshToken {
-  id          String    @id @default(uuid()) @db.Uuid
-  userId      String    @map("user_id") @db.Uuid
-  tokenHash   String    @unique @map("token_hash")
-  familyId    String    @map("family_id") @db.Uuid
-  expiresAt   DateTime  @map("expires_at")
-  revokedAt   DateTime? @map("revoked_at")
-  replacedById String?  @map("replaced_by_id") @db.Uuid
-  createdAt   DateTime  @default(now()) @map("created_at")
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  tokenHash    String    @unique @map("token_hash")
+  familyId     String    @map("family_id") @db.Uuid
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  replacedById String?   @map("replaced_by_id") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([familyId])
   @@map("refresh_tokens")
+}
+
+model Project {
+  id              String        @id @default(uuid()) @db.Uuid
+  title           String
+  description     String?
+  objectives      String?
+  status          ProjectStatus @default(FORMULATION)
+  startDate       DateTime?     @map("start_date")
+  endDate         DateTime?     @map("end_date")
+  coordinatorId   String        @map("coordinator_id") @db.Uuid
+  createdById     String        @map("created_by_id") @db.Uuid
+  notionPageId    String?       @unique @map("notion_page_id")
+  lastEditedTime  DateTime?     @map("last_edited_time")
+  syncedAt        DateTime?     @map("synced_at")
+  syncStatus      SyncStatus    @default(PENDING) @map("sync_status")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  coordinator User           @relation("ProjectCoordinator", fields: [coordinatorId], references: [id])
+  createdBy   User           @relation("ProjectCreator", fields: [createdById], references: [id])
+  members     ProjectMember[]
+  tasks       Task[]
+  progress    Progress[]
+
+  @@index([coordinatorId])
+  @@index([status])
+  @@map("projects")
+}
+
+model ProjectMember {
+  projectId String   @map("project_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  joinedAt  DateTime @default(now()) @map("joined_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, userId])
+  @@index([userId])
+  @@map("project_members")
+}
+
+model Task {
+  id             String       @id @default(uuid()) @db.Uuid
+  projectId      String       @map("project_id") @db.Uuid
+  title          String
+  description    String?
+  assigneeId     String?      @map("assignee_id") @db.Uuid
+  status         TaskStatus   @default(TODO)
+  priority       TaskPriority @default(MEDIUM)
+  dueDate        DateTime?    @map("due_date")
+  notionPageId   String?      @unique @map("notion_page_id")
+  lastEditedTime DateTime?    @map("last_edited_time")
+  syncedAt       DateTime?    @map("synced_at")
+  syncStatus     SyncStatus   @default(PENDING) @map("sync_status")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  project  Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee User?      @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  progress Progress[]
+
+  @@index([projectId])
+  @@index([assigneeId])
+  @@index([status])
+  @@map("tasks")
+}
+
+model Progress {
+  id             String     @id @default(uuid()) @db.Uuid
+  projectId      String     @map("project_id") @db.Uuid
+  taskId         String?    @map("task_id") @db.Uuid
+  authorId       String     @map("author_id") @db.Uuid
+  title          String
+  description    String
+  evidenceLinks  String[]   @default([]) @map("evidence_links")
+  recordedAt     DateTime   @default(now()) @map("recorded_at")
+  notionPageId   String?    @unique @map("notion_page_id")
+  lastEditedTime DateTime?  @map("last_edited_time")
+  syncedAt       DateTime?  @map("synced_at")
+  syncStatus     SyncStatus @default(PENDING) @map("sync_status")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task    Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  author  User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([taskId])
+  @@index([authorId])
+  @@map("progress_entries")
 }

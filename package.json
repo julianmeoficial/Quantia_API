@@ -97,12 +97,35 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "**/*.(t|j)s",
+      "!**/*.module.ts",
+      "!**/main.ts",
+      "!**/worker.ts"
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
     "moduleNameMapper": {
       "^@quantia/contracts$": "<rootDir>/../packages/contracts/src/index.ts"
+    },
+    "coverageThreshold": {
+      "src/projects/projects.service.ts": {
+        "statements": 70,
+        "lines": 70,
+        "functions": 70,
+        "branches": 60
+      },
+      "src/tasks/tasks.service.ts": {
+        "statements": 70,
+        "lines": 70,
+        "functions": 70,
+        "branches": 60
+      },
+      "src/progress/progress.service.ts": {
+        "statements": 70,
+        "lines": 70,
+        "functions": 70,
+        "branches": 60
+      }
     }
   }
 }

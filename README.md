@@ -73,6 +73,20 @@ Usuarios de desarrollo (tras `npm run prisma:seed` contra Postgres en `localhost
 | `admin@quantia.local` | `AdminPass1!` | ADMINISTRADOR |
 | `coord@quantia.local` | `CoordPass1!` | COORDINADOR |
 | `researcher@quantia.local` | `ResearchPass1!` | INVESTIGADOR |
+| `researcher-b@quantia.local` | `ResearchPass1!` | INVESTIGADOR |
+
+El seed también crea **Proyecto Alpha** (miembro A) y **Proyecto Beta** (miembro B).
+
+## Dominio (F2)
+
+| Método | Ruta | Acceso |
+|--------|------|--------|
+| CRUD | `/api/v1/projects` | JWT; create = Admin/Coord; list filtrado por pertenencia |
+| Members | `/api/v1/projects/:id/members` | Admin o coordinador del proyecto |
+| CRUD | `/api/v1/projects/:projectId/tasks` | JWT + acceso al proyecto |
+| CRUD | `/api/v1/projects/:projectId/progress` | JWT + acceso al proyecto |
+
+Detalle de pertenencia y filtros: [`docs/architecture/domain.md`](docs/architecture/domain.md).
 
 ## Scripts
 
@@ -94,14 +108,17 @@ Usuarios de desarrollo (tras `npm run prisma:seed` contra Postgres en `localhost
 src/
   auth/         Login, refresh, logout, JWT
   users/        /users/me + CRUD admin
-  common/       Guards, decorators, filters
+  projects/     CRUD proyectos + members (F2)
+  tasks/        CRUD tareas anidadas (F2)
+  progress/     CRUD avances / evidencias (F2)
+  common/       Guards, decorators, filters, ProjectAccessService
   config/       ConfigModule + validación Zod
   database/     PrismaService
   redis/        RedisService
   health/       GET /api/v1/health (@Public)
   worker.ts     Entry del worker
 packages/
-  contracts/    @quantia/contracts (tipos + Zod auth/users)
+  contracts/    @quantia/contracts (tipos + Zod auth/users/projects/tasks/progress)
 prisma/         Schema y migraciones
 test/           E2E
 docs/           Documentación técnica
@@ -124,11 +141,12 @@ GitHub Actions ejecuta en cada PR y push a `main`:
 | [`docs/architecture/overview.md`](docs/architecture/overview.md) | Arquitectura, árbol de paquetería, guía de carpetas |
 | [`docs/architecture/docker.md`](docs/architecture/docker.md) | Imágenes y contenedores Docker, stages, flujo de arranque |
 | [`docs/architecture/auth.md`](docs/architecture/auth.md) | Auth JWT, roles, refresh rotativo (F1 / ENG-119) |
+| [`docs/architecture/domain.md`](docs/architecture/domain.md) | Proyectos, tareas, avances y pertenencia (F2 / ENG-122) |
 | [`docs/development/local-setup.md`](docs/development/local-setup.md) | Cómo correr localmente (Compose o host) |
 
 ## Roadmap
 
-Desarrollo incremental F0–F7. Fase actual: [ENG-119 — F1 Auth](https://linear.app/brevku/issue/ENG-119/f1-autenticacion-usuarios-y-roles) (padre [ENG-116](https://linear.app/brevku/issue/ENG-116)).
+Desarrollo incremental F0–F7. Fase actual: [ENG-122 — F2 Dominio](https://linear.app/brevku/issue/ENG-122) (padre [ENG-116](https://linear.app/brevku/issue/ENG-116)).
 
 | Fase | Tema |
 |------|------|

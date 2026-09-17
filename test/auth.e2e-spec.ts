@@ -52,6 +52,10 @@ describe('Auth & Users (e2e)', () => {
 
     prisma = app.get(PrismaService);
 
+    await prisma.progress.deleteMany();
+    await prisma.task.deleteMany();
+    await prisma.projectMember.deleteMany();
+    await prisma.project.deleteMany();
     await prisma.refreshToken.deleteMany();
     await prisma.userRole.deleteMany();
     await prisma.user.deleteMany();

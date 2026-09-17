@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- F2 domain (ENG-122): `ProjectsModule`, `TasksModule`, `ProgressModule` with membership scoping in services, pagination/filters/sort, Prisma models + migration, seed demo (2 projects, cross members), unit coverage thresholds ≥70% on domain services, e2e `test/domain.e2e-spec.ts`, contracts for projects/tasks/progress, docs in `docs/architecture/domain.md`.
 - F0 bootstrap (ENG-121): NestJS skeleton, ConfigModule with Zod validation, Prisma + Redis modules, `GET /api/v1/health`, worker stub, Docker Compose (postgres/redis/migrate/api/worker), multi-stage Dockerfile, GitHub Actions CI, `@quantia/contracts` workspace stub, README and docs.
 - Architecture docs: package tree, folder guide, and documentation map in `docs/architecture/overview.md`.
 - Docker containment docs: images, containers, multi-stage build and Compose boot order in `docs/architecture/docker.md`.

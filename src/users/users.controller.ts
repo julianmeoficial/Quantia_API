@@ -16,11 +16,8 @@ import { RoleName } from '@quantia/contracts';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../common/interfaces/jwt-payload.interface';
-import {
-  CreateUserDto,
-  PaginationQueryDto,
-  UpdateUserDto,
-} from './dto/user.dto';
+import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
+import { PaginationQueryDto } from '../common/dto/pagination.dto';
 import { UsersService } from './users.service';
 
 @ApiTags('users')
