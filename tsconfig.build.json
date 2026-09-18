@@ -2,6 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "rootDir": "./src",
+    "incremental": false,
     "paths": {
       "@quantia/contracts": ["./packages/contracts/dist/index"]
     }

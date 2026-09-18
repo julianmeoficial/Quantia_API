@@ -4,14 +4,19 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { RoleName } from '@quantia/contracts';
+import { SyncEntityType } from '@prisma/client';
 import * as argon2 from 'argon2';
+import { NotionSyncEnqueueService } from '../notion/notion-sync-enqueue.service';
 import { UserResponseDto } from './dto/user-response.dto';
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
 import { UserWithRoles, UsersRepository } from './users.repository';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly usersRepository: UsersRepository) {}
+  constructor(
+    private readonly usersRepository: UsersRepository,
+    private readonly notionSync: NotionSyncEnqueueService,
+  ) {}
 
   async create(dto: CreateUserDto): Promise<UserResponseDto> {
     const existing = await this.usersRepository.findByEmail(dto.email);
@@ -27,6 +32,7 @@ export class UsersService {
       isActive: dto.isActive ?? true,
       roles: dto.roles,
     });
+    await this.notionSync.enqueueDbToNotion(SyncEntityType.USER, user.id);
     return this.toResponse(user);
   }
 
@@ -97,6 +103,7 @@ export class UsersService {
       isActive: dto.isActive,
       roles: dto.roles,
     });
+    await this.notionSync.enqueueDbToNotion(SyncEntityType.USER, user.id);
     return this.toResponse(user);
   }
 

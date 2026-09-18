@@ -3,13 +3,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, type Progress } from '@prisma/client';
+import { Prisma, SyncEntityType, type Progress } from '@prisma/client';
 import {
   buildPaginatedResult,
   type PaginatedResult,
 } from '../common/dto/pagination.dto';
 import type { AuthenticatedUser } from '../common/interfaces/jwt-payload.interface';
 import { ProjectAccessService } from '../common/project-access.service';
+import { NotionSyncEnqueueService } from '../notion/notion-sync-enqueue.service';
 import { ProgressResponseDto } from './dto/progress-response.dto';
 import {
   CreateProgressDto,
@@ -23,6 +24,7 @@ export class ProgressService {
   constructor(
     private readonly progressRepository: ProgressRepository,
     private readonly projectAccess: ProjectAccessService,
+    private readonly notionSync: NotionSyncEnqueueService,
   ) {}
 
   async create(
@@ -52,6 +54,7 @@ export class ProgressService {
       recordedAt: dto.recordedAt ? new Date(dto.recordedAt) : undefined,
     });
 
+    await this.notionSync.enqueueDbToNotion(SyncEntityType.PROGRESS, entry.id);
     return this.toResponse(entry);
   }
 
@@ -130,6 +133,7 @@ export class ProgressService {
       recordedAt: dto.recordedAt ? new Date(dto.recordedAt) : undefined,
     });
 
+    await this.notionSync.enqueueDbToNotion(SyncEntityType.PROGRESS, entry.id);
     return this.toResponse(entry);
   }
 

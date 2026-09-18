@@ -18,7 +18,9 @@ describe('UsersService', () => {
     delete: jest.fn(),
   } as unknown as UsersRepository;
 
-  const service = new UsersService(repository);
+  const service = new UsersService(repository, {
+    enqueueDbToNotion: jest.fn().mockResolvedValue(undefined),
+  } as never);
 
   const sampleUser = {
     id: '11111111-1111-1111-1111-111111111111',

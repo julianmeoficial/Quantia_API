@@ -111,6 +111,7 @@ src/
   projects/     CRUD proyectos + members (F2)
   tasks/        CRUD tareas anidadas (F2)
   progress/     CRUD avances / evidencias (F2)
+  notion/       Webhook + NotionClient + sync enqueue (F3)
   common/       Guards, decorators, filters, ProjectAccessService
   config/       ConfigModule + validación Zod
   database/     PrismaService
@@ -142,11 +143,12 @@ GitHub Actions ejecuta en cada PR y push a `main`:
 | [`docs/architecture/docker.md`](docs/architecture/docker.md) | Imágenes y contenedores Docker, stages, flujo de arranque |
 | [`docs/architecture/auth.md`](docs/architecture/auth.md) | Auth JWT, roles, refresh rotativo (F1 / ENG-119) |
 | [`docs/architecture/domain.md`](docs/architecture/domain.md) | Proyectos, tareas, avances y pertenencia (F2 / ENG-122) |
+| [`docs/architecture/notion.md`](docs/architecture/notion.md) | Sync Notion ↔ Postgres (F3 / ENG-120). **NO OLVIDAR:** al pasar de túnel local a Railway hay que **cambiar la URL del webhook en Notion** y volver a verificar + actualizar `NOTION_WEBHOOK_SECRET`. |
 | [`docs/development/local-setup.md`](docs/development/local-setup.md) | Cómo correr localmente (Compose o host) |
 
 ## Roadmap
 
-Desarrollo incremental F0–F7. Fase actual: [ENG-122 — F2 Dominio](https://linear.app/brevku/issue/ENG-122) (padre [ENG-116](https://linear.app/brevku/issue/ENG-116)).
+Desarrollo incremental F0–F7. Fase actual: [ENG-120 — F3 Notion](https://linear.app/brevku/issue/ENG-120/f3-integracion-y-sincronizacion-con-notion) (padre [ENG-116](https://linear.app/brevku/issue/ENG-116)).
 
 | Fase | Tema |
 |------|------|

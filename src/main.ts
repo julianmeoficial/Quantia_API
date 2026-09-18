@@ -6,7 +6,7 @@ import { AppModule } from './app.module';
 import { EnvConfig } from './config/env.schema';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   app.setGlobalPrefix('api');
   app.enableVersioning({

@@ -8,6 +8,7 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { AppConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
+import { NotionModule } from './notion/notion.module';
 import { ProgressModule } from './progress/progress.module';
 import { ProjectsModule } from './projects/projects.module';
 import { RedisModule } from './redis/redis.module';
@@ -26,6 +27,7 @@ import { UsersModule } from './users/users.module';
     ProjectsModule,
     TasksModule,
     ProgressModule,
+    NotionModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

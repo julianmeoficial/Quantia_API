@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+const uuidLike = z.string().min(1);
+
 export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']),
   PORT: z.coerce.number().int().positive(),
@@ -10,6 +12,24 @@ export const envSchema = z.object({
   JWT_ACCESS_TTL: z.string().min(1).default('15m'),
   JWT_REFRESH_SECRET: z.string().min(32),
   JWT_REFRESH_TTL: z.string().min(1).default('7d'),
+
+  NOTION_TOKEN: z.string().min(1),
+  NOTION_WEBHOOK_SECRET: z.string().min(1),
+  NOTION_VERSION: z.string().min(1).default('2025-09-03'),
+  NOTION_RATE_LIMIT_RPS: z.coerce.number().positive().default(3),
+  NOTION_SYNC_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+
+  NOTION_SANDBOX_PAGE_ID: uuidLike,
+  NOTION_DB_USERS: uuidLike,
+  NOTION_DS_USERS: uuidLike,
+  NOTION_DB_PROJECTS: uuidLike,
+  NOTION_DS_PROJECTS: uuidLike,
+  NOTION_DB_TASKS: uuidLike,
+  NOTION_DS_TASKS: uuidLike,
+  NOTION_DB_PROGRESS: uuidLike,
+  NOTION_DS_PROGRESS: uuidLike,
+  NOTION_DB_SYNC_LOG: uuidLike,
+  NOTION_DS_SYNC_LOG: uuidLike,
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

@@ -1,11 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, type Task } from '@prisma/client';
+import { Prisma, SyncEntityType, type Task } from '@prisma/client';
 import {
   buildPaginatedResult,
   type PaginatedResult,
 } from '../common/dto/pagination.dto';
 import type { AuthenticatedUser } from '../common/interfaces/jwt-payload.interface';
 import { ProjectAccessService } from '../common/project-access.service';
+import { NotionSyncEnqueueService } from '../notion/notion-sync-enqueue.service';
 import { TaskResponseDto } from './dto/task-response.dto';
 import {
   CreateTaskDto,
@@ -19,6 +20,7 @@ export class TasksService {
   constructor(
     private readonly tasksRepository: TasksRepository,
     private readonly projectAccess: ProjectAccessService,
+    private readonly notionSync: NotionSyncEnqueueService,
   ) {}
 
   async create(
@@ -45,6 +47,7 @@ export class TasksService {
       dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
     });
 
+    await this.notionSync.enqueueDbToNotion(SyncEntityType.TASK, task.id);
     return this.toResponse(task);
   }
 
@@ -127,6 +130,7 @@ export class TasksService {
           : undefined,
     });
 
+    await this.notionSync.enqueueDbToNotion(SyncEntityType.TASK, task.id);
     return this.toResponse(task);
   }
 

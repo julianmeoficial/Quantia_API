@@ -10,6 +10,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/database/prisma.service';
+import { NotionSyncEnqueueService } from '../src/notion/notion-sync-enqueue.service';
 
 type AuthTokensBody = {
   accessToken: string;
@@ -46,7 +47,13 @@ describe('Domain Projects/Tasks/Progress (e2e)', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(NotionSyncEnqueueService)
+      .useValue({
+        enqueueDbToNotion: jest.fn().mockResolvedValue(undefined),
+        enqueueNotionToDb: jest.fn().mockResolvedValue(undefined),
+      })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api');
@@ -65,6 +72,7 @@ describe('Domain Projects/Tasks/Progress (e2e)', () => {
 
     prisma = app.get(PrismaService);
 
+    await prisma.syncEvent.deleteMany();
     await prisma.progress.deleteMany();
     await prisma.task.deleteMany();
     await prisma.projectMember.deleteMany();
