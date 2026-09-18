@@ -76,7 +76,12 @@ describe('ProjectsService', () => {
       assertUserIsProjectMember: jest.fn(),
     } as unknown as jest.Mocked<ProjectAccessService>;
 
-    service = new ProjectsService(repository, access);
+    const notionSync = {
+      enqueueDbToNotion: jest.fn().mockResolvedValue(undefined),
+      enqueueNotionToDb: jest.fn().mockResolvedValue(undefined),
+    };
+
+    service = new ProjectsService(repository, access, notionSync as never);
   });
 
   it('forbids investigators from creating projects', async () => {

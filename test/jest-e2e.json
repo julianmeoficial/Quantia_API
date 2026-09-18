@@ -8,6 +8,8 @@
     "^.+\\.(t|j)s$": "ts-jest"
   },
   "moduleNameMapper": {
-    "^@quantia/contracts$": "<rootDir>/../packages/contracts/src/index.ts"
+    "^@quantia/contracts$": "<rootDir>/../packages/contracts/src/index.ts",
+    "^@nestjs/bullmq$": "<rootDir>/mocks/nestjs-bullmq.ts",
+    "^bullmq$": "<rootDir>/mocks/bullmq.ts"
   }
 }

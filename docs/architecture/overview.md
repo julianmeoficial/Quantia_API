@@ -111,7 +111,7 @@ Modules planned for later phases (siblings under `src/`):
 |-------|--------|------------------|
 | F1 ✓ | `src/auth/`, `src/users/` | Login, JWT, roles |
 | F2 ✓ | `src/projects/`, `src/tasks/`, `src/progress/` | Core research workflow |
-| F3 | `src/notion/`, jobs in worker | Bidirectional Notion ↔ Postgres sync |
+| F3 ✓ | `src/notion/`, jobs in worker | Bidirectional Notion ↔ Postgres sync |
 | F4 | `src/realtime/` | Socket.io gateway, rooms by `projectId` |
 | F5 | `src/budget/`, `src/documents/`, `src/reports/` | Financial execution, Storage, PDF/Excel |
 | F6 | observability wiring | Structured logs, Railway deploy |

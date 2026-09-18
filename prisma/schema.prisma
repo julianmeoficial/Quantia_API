@@ -41,6 +41,32 @@ enum SyncStatus {
   FAILED
 }
 
+enum SyncDirection {
+  NOTION_TO_DB
+  DB_TO_NOTION
+}
+
+enum SyncEntityType {
+  USER
+  PROJECT
+  TASK
+  PROGRESS
+}
+
+enum SyncJobName {
+  NOTION_TO_DB
+  DB_TO_NOTION
+}
+
+enum SyncEventStatus {
+  QUEUED
+  PROCESSING
+  SYNCED
+  PENDING
+  FAILED
+  DUPLICATE
+}
+
 model Role {
   id        String   @id @default(uuid()) @db.Uuid
   name      RoleName @unique
@@ -52,21 +78,25 @@ model Role {
 }
 
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  fullName     String   @map("full_name")
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id             String     @id @default(uuid()) @db.Uuid
+  email          String     @unique
+  passwordHash   String     @map("password_hash")
+  fullName       String     @map("full_name")
+  isActive       Boolean    @default(true) @map("is_active")
+  notionPageId   String?    @unique @map("notion_page_id")
+  lastEditedTime DateTime?  @map("last_edited_time")
+  syncedAt       DateTime?  @map("synced_at")
+  syncStatus     SyncStatus @default(PENDING) @map("sync_status")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
 
-  userRoles            UserRole[]
-  refreshTokens        RefreshToken[]
-  coordinatedProjects  Project[]       @relation("ProjectCoordinator")
-  createdProjects      Project[]       @relation("ProjectCreator")
-  projectMemberships   ProjectMember[]
-  assignedTasks        Task[]          @relation("TaskAssignee")
-  progressEntries      Progress[]
+  userRoles           UserRole[]
+  refreshTokens       RefreshToken[]
+  coordinatedProjects Project[]       @relation("ProjectCoordinator")
+  createdProjects     Project[]       @relation("ProjectCreator")
+  projectMemberships  ProjectMember[]
+  assignedTasks       Task[]          @relation("TaskAssignee")
+  progressEntries     Progress[]
 
   @@map("users")
 }
@@ -190,4 +220,24 @@ model Progress {
   @@index([taskId])
   @@index([authorId])
   @@map("progress_entries")
+}
+
+model SyncEvent {
+  id                    String          @id @default(uuid()) @db.Uuid
+  direction             SyncDirection
+  entityType            SyncEntityType  @map("entity_type")
+  jobName               SyncJobName     @map("job_name")
+  notionPageId          String?         @map("notion_page_id")
+  entityId              String?         @map("entity_id") @db.Uuid
+  status                SyncEventStatus @default(QUEUED)
+  attempts              Int             @default(0)
+  errorMessage          String?         @map("error_message")
+  payloadLastEditedTime DateTime?       @map("payload_last_edited_time")
+  createdAt             DateTime        @default(now()) @map("created_at")
+  updatedAt             DateTime        @updatedAt @map("updated_at")
+
+  @@index([notionPageId])
+  @@index([status])
+  @@index([entityType, entityId])
+  @@map("sync_events")
 }

@@ -5,13 +5,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { RoleName } from '@quantia/contracts';
-import { Prisma } from '@prisma/client';
+import { Prisma, SyncEntityType } from '@prisma/client';
 import {
   buildPaginatedResult,
   type PaginatedResult,
 } from '../common/dto/pagination.dto';
 import type { AuthenticatedUser } from '../common/interfaces/jwt-payload.interface';
 import { ProjectAccessService } from '../common/project-access.service';
+import { NotionSyncEnqueueService } from '../notion/notion-sync-enqueue.service';
 import { ProjectResponseDto } from './dto/project-response.dto';
 import {
   AddProjectMemberDto,
@@ -29,6 +30,7 @@ export class ProjectsService {
   constructor(
     private readonly projectsRepository: ProjectsRepository,
     private readonly projectAccess: ProjectAccessService,
+    private readonly notionSync: NotionSyncEnqueueService,
   ) {}
 
   async create(
@@ -81,6 +83,7 @@ export class ProjectsService {
       memberIds,
     });
 
+    await this.notionSync.enqueueDbToNotion(SyncEntityType.PROJECT, project.id);
     return this.toResponse(project);
   }
 
@@ -185,6 +188,7 @@ export class ProjectsService {
       memberIds: dto.memberIds,
     });
 
+    await this.notionSync.enqueueDbToNotion(SyncEntityType.PROJECT, project.id);
     return this.toResponse(project);
   }
 
