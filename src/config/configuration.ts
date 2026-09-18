@@ -31,4 +31,20 @@ export default (): EnvConfig => ({
   NOTION_DS_PROGRESS: process.env.NOTION_DS_PROGRESS ?? '',
   NOTION_DB_SYNC_LOG: process.env.NOTION_DB_SYNC_LOG ?? '',
   NOTION_DS_SYNC_LOG: process.env.NOTION_DS_SYNC_LOG ?? '',
+
+  SUPABASE_URL: process.env.SUPABASE_URL ?? '',
+  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+  SUPABASE_STORAGE_BUCKET_DOCUMENTS:
+    process.env.SUPABASE_STORAGE_BUCKET_DOCUMENTS ?? 'quantia-documents',
+  SUPABASE_STORAGE_BUCKET_REPORTS:
+    process.env.SUPABASE_STORAGE_BUCKET_REPORTS ?? 'quantia-reports',
+  STORAGE_SIGNED_URL_TTL_SECONDS: Number(
+    process.env.STORAGE_SIGNED_URL_TTL_SECONDS ?? 300,
+  ),
+  STORAGE_MAX_UPLOAD_BYTES: Number(
+    process.env.STORAGE_MAX_UPLOAD_BYTES ?? 26214400,
+  ),
+  STORAGE_ALLOWED_MIME:
+    process.env.STORAGE_ALLOWED_MIME ??
+    'application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 });

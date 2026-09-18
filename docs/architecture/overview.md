@@ -76,7 +76,7 @@ flowchart TB
 
 ## Package tree
 
-Current repository layout after F2 domain:
+Current repository layout after F5:
 
 ```text
 quantia-api/
@@ -84,36 +84,39 @@ quantia-api/
 ├── .cursor/rules/
 ├── .github/workflows/ci.yml
 ├── packages/contracts/src/
-│   ├── auth.ts · pagination.ts · projects.ts · tasks.ts · progress.ts · index.ts
+│   ├── auth · projects · tasks · progress · realtime · notion
+│   ├── budget · documents · reports · index
 ├── prisma/
-│   ├── schema.prisma                     # Users + Projects/Tasks/Progress
+│   ├── schema.prisma                     # Domain + Notion mirrors + Budget/Docs/Reports/Audit
 │   ├── seed.ts
 │   └── migrations/
-│       ├── 20260915000000_init/
-│       ├── 20260917000000_auth_users_roles/
-│       └── 20260918000000_projects_tasks_progress/
+│       ├── …auth / projects / notion_sync_events /
+│       └── 20260918020000_budget_documents_reports_audit/
 ├── src/
 │   ├── main.ts · worker.ts · app.module.ts · worker.module.ts
 │   ├── config/ · database/ · redis/ · health/
 │   ├── auth/ · users/
-│   ├── projects/ · tasks/ · progress/    # F2 domain
-│   └── common/                           # Guards, filters, ProjectAccessService
-├── test/                                 # auth.e2e + domain.e2e
+│   ├── projects/ · tasks/ · progress/
+│   ├── notion/ · realtime/
+│   ├── storage/ · audit/ · budget/ · documents/ · reports/   # F5
+│   └── common/
+├── test/                                 # auth · domain · notion · realtime · f5
 ├── docs/architecture/
-│   ├── overview.md · docker.md · auth.md · domain.md
+│   ├── overview · docker · auth · domain · notion · realtime
+│   └── budget-storage-reports.md
 ├── Dockerfile · docker-compose.yml · .env.example
 ├── README.md · CHANGELOG.md
 ```
 
-Modules planned for later phases (siblings under `src/`):
+Modules by phase:
 
 | Phase | Folder | Quantia function |
 |-------|--------|------------------|
 | F1 ✓ | `src/auth/`, `src/users/` | Login, JWT, roles |
 | F2 ✓ | `src/projects/`, `src/tasks/`, `src/progress/` | Core research workflow |
 | F3 ✓ | `src/notion/`, jobs in worker | Bidirectional Notion ↔ Postgres sync |
-| F4 | `src/realtime/` | Socket.io gateway (`/projects`, `/notifications`), Redis adapter + bridge |
-| F5 | `src/budget/`, `src/documents/`, `src/reports/` | Financial execution, Storage, PDF/Excel |
+| F4 ✓ | `src/realtime/` | Socket.io gateway (`/projects`, `/notifications`), Redis adapter + bridge |
+| F5 ✓ | `src/budget/`, `src/documents/`, `src/reports/`, `src/storage/`, `src/audit/` | Financial execution (Postgres only), Storage, PDF/Excel |
 | F6 | observability wiring | Structured logs, Railway deploy |
 | F7 | seeds + OpenAPI inventory | Handoff to Security |
 
@@ -263,6 +266,7 @@ Use this table to know where to look (and what to update) when changing the API:
 | Understand domain projects/tasks/progress (F2) | [`docs/architecture/domain.md`](./domain.md) |
 | Understand Notion sync (F3) | [`docs/architecture/notion.md`](./notion.md) |
 | Understand Socket.io realtime (F4) | [`docs/architecture/realtime.md`](./realtime.md) |
+| Understand budget, Storage and reports (F5) | [`docs/architecture/budget-storage-reports.md`](./budget-storage-reports.md) |
 | Quick start for contributors | [`README.md`](../../README.md) |
 | Record user-visible changes | [`CHANGELOG.md`](../../CHANGELOG.md) |
 | Env var contract | [`.env.example`](../../.env.example) |
