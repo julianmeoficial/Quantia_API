@@ -79,3 +79,20 @@ https://<subdominio>.trycloudflare.com/api/v1/webhooks/notion
 ```
 
 **Al desplegar en Railway:** sustituye esa URL en la suscripción de Notion, re-verifica y actualiza `NOTION_WEBHOOK_SECRET`. Detalle y checklist: [`docs/architecture/notion.md`](../architecture/notion.md) (sección **NO OLVIDAR**).
+
+## Socket.io (F4)
+
+Con la API arriba y `CORS_ORIGINS` configurado:
+
+```bash
+# Cliente de prueba (Node)
+node -e "
+const { io } = require('socket.io-client');
+const s = io('http://127.0.0.1:3000/projects', { auth: { token: process.env.TOKEN } });
+s.on('authenticated', () => s.emit('join', { projectId: process.env.PROJECT_ID }));
+s.on('joined', console.log);
+s.on('tarea.actualizada', console.log);
+"
+```
+
+Detalle: [`docs/architecture/realtime.md`](../architecture/realtime.md).

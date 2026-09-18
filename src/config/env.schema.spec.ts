@@ -11,6 +11,7 @@ describe('validateEnv', () => {
     JWT_ACCESS_TTL: '15m',
     JWT_REFRESH_SECRET: 'quantia-test-refresh-secret-change-me-32',
     JWT_REFRESH_TTL: '7d',
+    CORS_ORIGINS: 'http://localhost:3000,http://127.0.0.1:3000',
     NOTION_TOKEN: 'ntn_test_token_placeholder',
     NOTION_WEBHOOK_SECRET: 'whsec_test_secret',
     NOTION_VERSION: '2025-09-03',
@@ -63,6 +64,12 @@ describe('validateEnv', () => {
     const { NOTION_TOKEN, ...incomplete } = validEnv;
     void NOTION_TOKEN;
     expect(() => validateEnv(incomplete)).toThrow(
+      'Environment validation failed',
+    );
+  });
+
+  it('rejects CORS_ORIGINS with wildcard', () => {
+    expect(() => validateEnv({ ...validEnv, CORS_ORIGINS: '*' })).toThrow(
       'Environment validation failed',
     );
   });

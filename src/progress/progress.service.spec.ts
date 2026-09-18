@@ -55,9 +55,16 @@ describe('ProgressService', () => {
       }),
     } as unknown as jest.Mocked<ProjectAccessService>;
 
-    service = new ProgressService(repository, access, {
-      enqueueDbToNotion: jest.fn().mockResolvedValue(undefined),
-    } as never);
+    service = new ProgressService(
+      repository,
+      access,
+      {
+        enqueueDbToNotion: jest.fn().mockResolvedValue(undefined),
+      } as never,
+      {
+        emitAvanceRegistrado: jest.fn().mockResolvedValue(undefined),
+      } as never,
+    );
   });
 
   it('creates with authorId from JWT', async () => {

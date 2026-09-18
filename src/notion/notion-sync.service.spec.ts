@@ -53,6 +53,11 @@ describe('NotionSyncService idempotency', () => {
       notion as never,
       prisma as never,
       config as never,
+      {
+        emitTareaActualizada: jest.fn(),
+        emitAvanceRegistrado: jest.fn(),
+        emitProyectoRetrasado: jest.fn(),
+      } as never,
     );
 
     await service.syncNotionPageToDb({

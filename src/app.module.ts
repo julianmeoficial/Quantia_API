@@ -11,6 +11,7 @@ import { HealthModule } from './health/health.module';
 import { NotionModule } from './notion/notion.module';
 import { ProgressModule } from './progress/progress.module';
 import { ProjectsModule } from './projects/projects.module';
+import { RealtimeModule } from './realtime/realtime.module';
 import { RedisModule } from './redis/redis.module';
 import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
@@ -28,6 +29,7 @@ import { UsersModule } from './users/users.module';
     TasksModule,
     ProgressModule,
     NotionModule,
+    RealtimeModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

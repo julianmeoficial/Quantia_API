@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { EnvConfig } from './config/env.schema';
+import { RedisIoAdapter } from './realtime/redis-io.adapter';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { rawBody: true });
@@ -23,6 +24,20 @@ async function bootstrap(): Promise<void> {
 
   const configService = app.get(ConfigService<EnvConfig, true>);
   const nodeEnv = configService.get('NODE_ENV', { infer: true });
+  const corsOrigins = configService
+    .get('CORS_ORIGINS', { infer: true })
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  app.enableCors({
+    origin: corsOrigins,
+    credentials: true,
+  });
+
+  const redisIoAdapter = new RedisIoAdapter(app);
+  await redisIoAdapter.connectToRedis();
+  app.useWebSocketAdapter(redisIoAdapter);
 
   if (nodeEnv !== 'production') {
     const swaggerConfig = new DocumentBuilder()

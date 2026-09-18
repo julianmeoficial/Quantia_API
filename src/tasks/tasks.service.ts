@@ -7,6 +7,7 @@ import {
 import type { AuthenticatedUser } from '../common/interfaces/jwt-payload.interface';
 import { ProjectAccessService } from '../common/project-access.service';
 import { NotionSyncEnqueueService } from '../notion/notion-sync-enqueue.service';
+import { RealtimeEmitter } from '../realtime/realtime-emitter.service';
 import { TaskResponseDto } from './dto/task-response.dto';
 import {
   CreateTaskDto,
@@ -21,6 +22,7 @@ export class TasksService {
     private readonly tasksRepository: TasksRepository,
     private readonly projectAccess: ProjectAccessService,
     private readonly notionSync: NotionSyncEnqueueService,
+    private readonly realtime: RealtimeEmitter,
   ) {}
 
   async create(
@@ -48,6 +50,7 @@ export class TasksService {
     });
 
     await this.notionSync.enqueueDbToNotion(SyncEntityType.TASK, task.id);
+    await this.emitTaskUpdated(task);
     return this.toResponse(task);
   }
 
@@ -131,6 +134,7 @@ export class TasksService {
     });
 
     await this.notionSync.enqueueDbToNotion(SyncEntityType.TASK, task.id);
+    await this.emitTaskUpdated(task);
     return this.toResponse(task);
   }
 
@@ -161,5 +165,17 @@ export class TasksService {
       createdAt: task.createdAt.toISOString(),
       updatedAt: task.updatedAt.toISOString(),
     };
+  }
+
+  private async emitTaskUpdated(task: Task): Promise<void> {
+    await this.realtime.emitTareaActualizada({
+      projectId: task.projectId,
+      taskId: task.id,
+      title: task.title,
+      status: task.status,
+      priority: task.priority,
+      assigneeId: task.assigneeId,
+      updatedAt: task.updatedAt.toISOString(),
+    });
   }
 }
