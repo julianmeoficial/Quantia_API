@@ -8,6 +8,10 @@ import { NotionCoreModule } from './notion/notion-core.module';
 import { NotionSyncProcessor } from './notion/notion-sync.processor';
 import { RealtimeCoreModule } from './realtime/realtime-core.module';
 import { RedisModule } from './redis/redis.module';
+import { ReportsProcessor } from './reports/report.processor';
+import { REPORTS_QUEUE } from './reports/reports.constants';
+import { ReportsRepository } from './reports/reports.repository';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
   imports: [
@@ -15,6 +19,7 @@ import { RedisModule } from './redis/redis.module';
     DatabaseModule,
     RedisModule,
     RealtimeCoreModule,
+    StorageModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -28,8 +33,11 @@ import { RedisModule } from './redis/redis.module';
         };
       },
     }),
+    BullModule.registerQueue({
+      name: REPORTS_QUEUE,
+    }),
     NotionCoreModule,
   ],
-  providers: [NotionSyncProcessor],
+  providers: [NotionSyncProcessor, ReportsProcessor, ReportsRepository],
 })
 export class WorkerModule {}

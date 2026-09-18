@@ -45,6 +45,30 @@ export const envSchema = z.object({
   NOTION_DS_PROGRESS: uuidLike,
   NOTION_DB_SYNC_LOG: uuidLike,
   NOTION_DS_SYNC_LOG: uuidLike,
+
+  SUPABASE_URL: z.string().url(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  SUPABASE_STORAGE_BUCKET_DOCUMENTS: z
+    .string()
+    .min(1)
+    .default('quantia-documents'),
+  SUPABASE_STORAGE_BUCKET_REPORTS: z.string().min(1).default('quantia-reports'),
+  STORAGE_SIGNED_URL_TTL_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(300),
+  STORAGE_MAX_UPLOAD_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(26214400),
+  STORAGE_ALLOWED_MIME: z
+    .string()
+    .min(1)
+    .default(
+      'application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

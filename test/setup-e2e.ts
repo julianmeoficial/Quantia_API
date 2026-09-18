@@ -27,3 +27,11 @@ process.env.NOTION_DB_PROGRESS ??= '950366a7-30f3-4f00-9094-a2d1af9209d9';
 process.env.NOTION_DS_PROGRESS ??= '59238cc9-6691-414e-af53-bcd9648e9897';
 process.env.NOTION_DB_SYNC_LOG ??= 'a1c62fe1-d457-4a7d-b16a-c360786b7520';
 process.env.NOTION_DS_SYNC_LOG ??= 'f3e4e43d-185a-41c2-9eb9-7bf8303892b8';
+process.env.SUPABASE_URL ??= 'https://example.supabase.co';
+process.env.SUPABASE_SERVICE_ROLE_KEY ??= 'supabase_test_service_role_key';
+process.env.SUPABASE_STORAGE_BUCKET_DOCUMENTS ??= 'quantia-documents';
+process.env.SUPABASE_STORAGE_BUCKET_REPORTS ??= 'quantia-reports';
+process.env.STORAGE_SIGNED_URL_TTL_SECONDS ??= '300';
+process.env.STORAGE_MAX_UPLOAD_BYTES ??= '26214400';
+process.env.STORAGE_ALLOWED_MIME ??=
+  'application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';

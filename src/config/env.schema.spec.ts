@@ -28,6 +28,8 @@ describe('validateEnv', () => {
     NOTION_DS_PROGRESS: '59238cc9-6691-414e-af53-bcd9648e9897',
     NOTION_DB_SYNC_LOG: 'a1c62fe1-d457-4a7d-b16a-c360786b7520',
     NOTION_DS_SYNC_LOG: 'f3e4e43d-185a-41c2-9eb9-7bf8303892b8',
+    SUPABASE_URL: 'https://example.supabase.co',
+    SUPABASE_SERVICE_ROLE_KEY: 'supabase_test_service_role_key',
   };
 
   it('accepts a valid environment', () => {

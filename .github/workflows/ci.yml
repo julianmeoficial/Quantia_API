@@ -32,6 +32,13 @@ env:
   NOTION_DS_PROGRESS: 59238cc9-6691-414e-af53-bcd9648e9897
   NOTION_DB_SYNC_LOG: a1c62fe1-d457-4a7d-b16a-c360786b7520
   NOTION_DS_SYNC_LOG: f3e4e43d-185a-41c2-9eb9-7bf8303892b8
+  SUPABASE_URL: https://example.supabase.co
+  SUPABASE_SERVICE_ROLE_KEY: supabase_ci_service_role_key
+  SUPABASE_STORAGE_BUCKET_DOCUMENTS: quantia-documents
+  SUPABASE_STORAGE_BUCKET_REPORTS: quantia-reports
+  STORAGE_SIGNED_URL_TTL_SECONDS: 300
+  STORAGE_MAX_UPLOAD_BYTES: 26214400
+  STORAGE_ALLOWED_MIME: application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
 
 jobs:
   verify:

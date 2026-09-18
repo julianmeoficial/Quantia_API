@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- F5 presupuesto / documentos / reportes (ENG-124): modelos Budget/Document/Report/AuditLog (solo Postgres, sin Notion), StorageModule Supabase (buckets privados + signed URLs), AuditInterceptor, generación PDF/Excel en worker BullMQ (`reports`), alerta `presupuesto.ejecucion-baja` por subejecución, contracts 0.5.0, docs en `docs/architecture/budget-storage-reports.md`.
 - F4 Socket.io realtime (ENG-123): namespaces `/projects` + `/notifications`, JWT handshake, membership `join`, Redis adapter + `quantia:realtime` bridge (API + worker via `RealtimeEmitter`), contract events, `CORS_ORIGINS`, docs in `docs/architecture/realtime.md`.
 - F3 Notion sync (ENG-120): `NotionClient` (3 req/s + 429 retry), `POST /api/v1/webhooks/notion` with verification + HMAC, BullMQ jobs `sync:notion-to-db` / `sync:db-to-notion`, `sync_events` + User Notion mirror columns, enqueue after domain CRUD, docs in `docs/architecture/notion.md`.
 - Docs: sección **NO OLVIDAR** para URL del webhook (túnel Cloudflare local → sustituir por Railway al desplegar + re-verificar + actualizar `NOTION_WEBHOOK_SECRET`).
