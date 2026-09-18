@@ -81,7 +81,14 @@ describe('ProjectsService', () => {
       enqueueNotionToDb: jest.fn().mockResolvedValue(undefined),
     };
 
-    service = new ProjectsService(repository, access, notionSync as never);
+    service = new ProjectsService(
+      repository,
+      access,
+      notionSync as never,
+      {
+        emitProyectoRetrasado: jest.fn().mockResolvedValue(undefined),
+      } as never,
+    );
   });
 
   it('forbids investigators from creating projects', async () => {

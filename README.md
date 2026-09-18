@@ -49,6 +49,8 @@ Respuesta esperada: HTTP **200** con `database` y `redis` en estado `up`.
 | `JWT_ACCESS_TTL` | Vida del access token | `15m` |
 | `JWT_REFRESH_SECRET` | Secreto auxiliar refresh (≥ 32) | (dev secret en `.env.example`) |
 | `JWT_REFRESH_TTL` | Vida del refresh token | `7d` |
+| `CORS_ORIGINS` | Allowlist CSV para HTTP + Socket.io (nunca `*`) | `http://localhost:3000,...` |
+| `NOTION_TOKEN` | Token integración Notion | (sandbox) |
 
 La aplicación **no arranca** si falta alguna variable obligatoria.
 
@@ -112,6 +114,7 @@ src/
   tasks/        CRUD tareas anidadas (F2)
   progress/     CRUD avances / evidencias (F2)
   notion/       Webhook + NotionClient + sync enqueue (F3)
+  realtime/     Socket.io gateway + Redis bridge (F4)
   common/       Guards, decorators, filters, ProjectAccessService
   config/       ConfigModule + validación Zod
   database/     PrismaService
@@ -144,11 +147,12 @@ GitHub Actions ejecuta en cada PR y push a `main`:
 | [`docs/architecture/auth.md`](docs/architecture/auth.md) | Auth JWT, roles, refresh rotativo (F1 / ENG-119) |
 | [`docs/architecture/domain.md`](docs/architecture/domain.md) | Proyectos, tareas, avances y pertenencia (F2 / ENG-122) |
 | [`docs/architecture/notion.md`](docs/architecture/notion.md) | Sync Notion ↔ Postgres (F3 / ENG-120). **NO OLVIDAR:** al pasar de túnel local a Railway hay que **cambiar la URL del webhook en Notion** y volver a verificar + actualizar `NOTION_WEBHOOK_SECRET`. |
+| [`docs/architecture/realtime.md`](docs/architecture/realtime.md) | Socket.io namespaces, JWT handshake, rooms, Redis bridge (F4 / ENG-123) |
 | [`docs/development/local-setup.md`](docs/development/local-setup.md) | Cómo correr localmente (Compose o host) |
 
 ## Roadmap
 
-Desarrollo incremental F0–F7. Fase actual: [ENG-120 — F3 Notion](https://linear.app/brevku/issue/ENG-120/f3-integracion-y-sincronizacion-con-notion) (padre [ENG-116](https://linear.app/brevku/issue/ENG-116)).
+Desarrollo incremental F0–F7. Fase actual: [ENG-123 — F4 Socket.io](https://linear.app/brevku/issue/ENG-123/f4-tiempo-real-con-socketio) (padre [ENG-116](https://linear.app/brevku/issue/ENG-116)).
 
 | Fase | Tema |
 |------|------|

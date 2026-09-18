@@ -11,6 +11,9 @@ export default (): EnvConfig => ({
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET ?? '',
   JWT_REFRESH_TTL: process.env.JWT_REFRESH_TTL ?? '7d',
 
+  CORS_ORIGINS:
+    process.env.CORS_ORIGINS ?? 'http://localhost:3000,http://127.0.0.1:3000',
+
   NOTION_TOKEN: process.env.NOTION_TOKEN ?? '',
   NOTION_WEBHOOK_SECRET: process.env.NOTION_WEBHOOK_SECRET ?? '',
   NOTION_VERSION: process.env.NOTION_VERSION ?? '2025-09-03',

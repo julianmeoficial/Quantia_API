@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { RoleName } from '@quantia/contracts';
+import { RoleName, ProjectStatus } from '@quantia/contracts';
 import { Prisma, SyncEntityType } from '@prisma/client';
 import {
   buildPaginatedResult,
@@ -13,6 +13,7 @@ import {
 import type { AuthenticatedUser } from '../common/interfaces/jwt-payload.interface';
 import { ProjectAccessService } from '../common/project-access.service';
 import { NotionSyncEnqueueService } from '../notion/notion-sync-enqueue.service';
+import { RealtimeEmitter } from '../realtime/realtime-emitter.service';
 import { ProjectResponseDto } from './dto/project-response.dto';
 import {
   AddProjectMemberDto,
@@ -31,6 +32,7 @@ export class ProjectsService {
     private readonly projectsRepository: ProjectsRepository,
     private readonly projectAccess: ProjectAccessService,
     private readonly notionSync: NotionSyncEnqueueService,
+    private readonly realtime: RealtimeEmitter,
   ) {}
 
   async create(
@@ -189,6 +191,15 @@ export class ProjectsService {
     });
 
     await this.notionSync.enqueueDbToNotion(SyncEntityType.PROJECT, project.id);
+    if (project.status === ProjectStatus.DELAYED) {
+      await this.realtime.emitProyectoRetrasado({
+        projectId: project.id,
+        title: project.title,
+        status: ProjectStatus.DELAYED,
+        endDate: project.endDate?.toISOString() ?? null,
+        updatedAt: project.updatedAt.toISOString(),
+      });
+    }
     return this.toResponse(project);
   }
 

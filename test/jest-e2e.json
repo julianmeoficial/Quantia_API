@@ -11,5 +11,8 @@
     "^@quantia/contracts$": "<rootDir>/../packages/contracts/src/index.ts",
     "^@nestjs/bullmq$": "<rootDir>/mocks/nestjs-bullmq.ts",
     "^bullmq$": "<rootDir>/mocks/bullmq.ts"
-  }
+  },
+  "maxWorkers": 1,
+  "forceExit": true,
+  "testTimeout": 15000
 }

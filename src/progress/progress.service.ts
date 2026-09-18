@@ -11,6 +11,7 @@ import {
 import type { AuthenticatedUser } from '../common/interfaces/jwt-payload.interface';
 import { ProjectAccessService } from '../common/project-access.service';
 import { NotionSyncEnqueueService } from '../notion/notion-sync-enqueue.service';
+import { RealtimeEmitter } from '../realtime/realtime-emitter.service';
 import { ProgressResponseDto } from './dto/progress-response.dto';
 import {
   CreateProgressDto,
@@ -25,6 +26,7 @@ export class ProgressService {
     private readonly progressRepository: ProgressRepository,
     private readonly projectAccess: ProjectAccessService,
     private readonly notionSync: NotionSyncEnqueueService,
+    private readonly realtime: RealtimeEmitter,
   ) {}
 
   async create(
@@ -55,6 +57,7 @@ export class ProgressService {
     });
 
     await this.notionSync.enqueueDbToNotion(SyncEntityType.PROGRESS, entry.id);
+    await this.emitProgress(entry);
     return this.toResponse(entry);
   }
 
@@ -134,6 +137,7 @@ export class ProgressService {
     });
 
     await this.notionSync.enqueueDbToNotion(SyncEntityType.PROGRESS, entry.id);
+    await this.emitProgress(entry);
     return this.toResponse(entry);
   }
 
@@ -164,5 +168,17 @@ export class ProgressService {
       createdAt: entry.createdAt.toISOString(),
       updatedAt: entry.updatedAt.toISOString(),
     };
+  }
+
+  private async emitProgress(entry: Progress): Promise<void> {
+    await this.realtime.emitAvanceRegistrado({
+      projectId: entry.projectId,
+      progressId: entry.id,
+      taskId: entry.taskId,
+      title: entry.title,
+      authorId: entry.authorId,
+      recordedAt: entry.recordedAt.toISOString(),
+      updatedAt: entry.updatedAt.toISOString(),
+    });
   }
 }

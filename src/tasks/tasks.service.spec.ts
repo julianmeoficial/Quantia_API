@@ -51,9 +51,16 @@ describe('TasksService', () => {
       assertUserIsProjectMember: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<ProjectAccessService>;
 
-    service = new TasksService(repository, access, {
-      enqueueDbToNotion: jest.fn().mockResolvedValue(undefined),
-    } as never);
+    service = new TasksService(
+      repository,
+      access,
+      {
+        enqueueDbToNotion: jest.fn().mockResolvedValue(undefined),
+      } as never,
+      {
+        emitTareaActualizada: jest.fn().mockResolvedValue(undefined),
+      } as never,
+    );
   });
 
   it('creates task after access check', async () => {

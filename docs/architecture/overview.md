@@ -112,7 +112,7 @@ Modules planned for later phases (siblings under `src/`):
 | F1 ✓ | `src/auth/`, `src/users/` | Login, JWT, roles |
 | F2 ✓ | `src/projects/`, `src/tasks/`, `src/progress/` | Core research workflow |
 | F3 ✓ | `src/notion/`, jobs in worker | Bidirectional Notion ↔ Postgres sync |
-| F4 | `src/realtime/` | Socket.io gateway, rooms by `projectId` |
+| F4 | `src/realtime/` | Socket.io gateway (`/projects`, `/notifications`), Redis adapter + bridge |
 | F5 | `src/budget/`, `src/documents/`, `src/reports/` | Financial execution, Storage, PDF/Excel |
 | F6 | observability wiring | Structured logs, Railway deploy |
 | F7 | seeds + OpenAPI inventory | Handoff to Security |
@@ -158,7 +158,7 @@ Domain tables arrive in F1+.
 
 | File | Function |
 |------|----------|
-| `redis.service.ts` | `ioredis` client; `ping()` for health; later BullMQ + Socket.io adapter |
+| `redis.service.ts` | `ioredis` client; `ping()` for health; shared by BullMQ + Socket.io adapter/bridge |
 | `redis.module.ts` | Global module exporting `RedisService` |
 
 ### `src/health/` — readiness of Quantia’s runtime dependencies
@@ -260,6 +260,9 @@ Use this table to know where to look (and what to update) when changing the API:
 | See high-level architecture (this file) | [`docs/architecture/overview.md`](./overview.md) |
 | Understand Docker images and containers | [`docs/architecture/docker.md`](./docker.md) |
 | Understand auth, JWT and roles (F1) | [`docs/architecture/auth.md`](./auth.md) |
+| Understand domain projects/tasks/progress (F2) | [`docs/architecture/domain.md`](./domain.md) |
+| Understand Notion sync (F3) | [`docs/architecture/notion.md`](./notion.md) |
+| Understand Socket.io realtime (F4) | [`docs/architecture/realtime.md`](./realtime.md) |
 | Quick start for contributors | [`README.md`](../../README.md) |
 | Record user-visible changes | [`CHANGELOG.md`](../../CHANGELOG.md) |
 | Env var contract | [`.env.example`](../../.env.example) |

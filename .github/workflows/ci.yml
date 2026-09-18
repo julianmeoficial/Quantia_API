@@ -15,6 +15,7 @@ env:
   JWT_ACCESS_TTL: 15m
   JWT_REFRESH_SECRET: quantia-ci-refresh-secret-change-me-32chars
   JWT_REFRESH_TTL: 7d
+  CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
   NOTION_TOKEN: ntn_ci_token_placeholder
   NOTION_WEBHOOK_SECRET: whsec_ci_webhook_secret
   NOTION_VERSION: 2025-09-03

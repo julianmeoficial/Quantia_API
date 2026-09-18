@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- F4 Socket.io realtime (ENG-123): namespaces `/projects` + `/notifications`, JWT handshake, membership `join`, Redis adapter + `quantia:realtime` bridge (API + worker via `RealtimeEmitter`), contract events, `CORS_ORIGINS`, docs in `docs/architecture/realtime.md`.
 - F3 Notion sync (ENG-120): `NotionClient` (3 req/s + 429 retry), `POST /api/v1/webhooks/notion` with verification + HMAC, BullMQ jobs `sync:notion-to-db` / `sync:db-to-notion`, `sync_events` + User Notion mirror columns, enqueue after domain CRUD, docs in `docs/architecture/notion.md`.
 - Docs: sección **NO OLVIDAR** para URL del webhook (túnel Cloudflare local → sustituir por Railway al desplegar + re-verificar + actualizar `NOTION_WEBHOOK_SECRET`).
 - Fix: `tsconfig.build.json` con `incremental: false` para evitar `dist` vacío tras `deleteOutDir` en `nest start --watch`.

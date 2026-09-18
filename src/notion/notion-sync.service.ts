@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ProjectStatus } from '@quantia/contracts';
 import {
   RoleName,
   SyncEntityType,
@@ -10,6 +11,7 @@ import * as argon2 from 'argon2';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../database/prisma.service';
 import type { EnvConfig } from '../config/env.schema';
+import { RealtimeEmitter } from '../realtime/realtime-emitter.service';
 import { NotionClient } from './notion.client';
 import * as mapper from './notion.mapper';
 
@@ -28,6 +30,7 @@ export class NotionSyncService {
     private readonly notion: NotionClient,
     private readonly prisma: PrismaService,
     private readonly config: ConfigService<EnvConfig, true>,
+    private readonly realtime: RealtimeEmitter,
   ) {}
 
   async syncNotionPageToDb(params: {
@@ -284,7 +287,7 @@ export class NotionSyncService {
       where: { notionPageId: page.id },
     });
     if (existing) {
-      await this.prisma.project.update({
+      const updated = await this.prisma.project.update({
         where: { id: existing.id },
         data: {
           title,
@@ -296,6 +299,15 @@ export class NotionSyncService {
         },
       });
       await this.writePgId(page.id, existing.id);
+      if (updated.status === ProjectStatus.DELAYED) {
+        await this.realtime.emitProyectoRetrasado({
+          projectId: updated.id,
+          title: updated.title,
+          status: ProjectStatus.DELAYED,
+          endDate: updated.endDate?.toISOString() ?? null,
+          updatedAt: updated.updatedAt.toISOString(),
+        });
+      }
       return;
     }
 
@@ -312,6 +324,15 @@ export class NotionSyncService {
       },
     });
     await this.writePgId(page.id, created.id);
+    if (created.status === ProjectStatus.DELAYED) {
+      await this.realtime.emitProyectoRetrasado({
+        projectId: created.id,
+        title: created.title,
+        status: ProjectStatus.DELAYED,
+        endDate: created.endDate?.toISOString() ?? null,
+        updatedAt: created.updatedAt.toISOString(),
+      });
+    }
   }
 
   private async upsertTaskFromNotion(
@@ -358,7 +379,7 @@ export class NotionSyncService {
       where: { notionPageId: page.id },
     });
     if (existing) {
-      await this.prisma.task.update({
+      const updated = await this.prisma.task.update({
         where: { id: existing.id },
         data: {
           title,
@@ -372,6 +393,15 @@ export class NotionSyncService {
         },
       });
       await this.writePgId(page.id, existing.id);
+      await this.realtime.emitTareaActualizada({
+        projectId: updated.projectId,
+        taskId: updated.id,
+        title: updated.title,
+        status: updated.status,
+        priority: updated.priority,
+        assigneeId: updated.assigneeId,
+        updatedAt: updated.updatedAt.toISOString(),
+      });
       return;
     }
 
@@ -388,6 +418,15 @@ export class NotionSyncService {
       },
     });
     await this.writePgId(page.id, created.id);
+    await this.realtime.emitTareaActualizada({
+      projectId: created.projectId,
+      taskId: created.id,
+      title: created.title,
+      status: created.status,
+      priority: created.priority,
+      assigneeId: created.assigneeId,
+      updatedAt: created.updatedAt.toISOString(),
+    });
   }
 
   private async upsertProgressFromNotion(
@@ -441,7 +480,7 @@ export class NotionSyncService {
       where: { notionPageId: page.id },
     });
     if (existing) {
-      await this.prisma.progress.update({
+      const updated = await this.prisma.progress.update({
         where: { id: existing.id },
         data: {
           title,
@@ -455,6 +494,15 @@ export class NotionSyncService {
         },
       });
       await this.writePgId(page.id, existing.id);
+      await this.realtime.emitAvanceRegistrado({
+        projectId: updated.projectId,
+        progressId: updated.id,
+        taskId: updated.taskId,
+        title: updated.title,
+        authorId: updated.authorId,
+        recordedAt: updated.recordedAt.toISOString(),
+        updatedAt: updated.updatedAt.toISOString(),
+      });
       return;
     }
 
@@ -471,6 +519,15 @@ export class NotionSyncService {
       },
     });
     await this.writePgId(page.id, created.id);
+    await this.realtime.emitAvanceRegistrado({
+      projectId: created.projectId,
+      progressId: created.id,
+      taskId: created.taskId,
+      title: created.title,
+      authorId: created.authorId,
+      recordedAt: created.recordedAt.toISOString(),
+      updatedAt: created.updatedAt.toISOString(),
+    });
   }
 
   private async pushUser(id: string): Promise<void> {

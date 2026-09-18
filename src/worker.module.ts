@@ -6,6 +6,7 @@ import { AppConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 import { NotionCoreModule } from './notion/notion-core.module';
 import { NotionSyncProcessor } from './notion/notion-sync.processor';
+import { RealtimeCoreModule } from './realtime/realtime-core.module';
 import { RedisModule } from './redis/redis.module';
 
 @Module({
@@ -13,6 +14,7 @@ import { RedisModule } from './redis/redis.module';
     AppConfigModule,
     DatabaseModule,
     RedisModule,
+    RealtimeCoreModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

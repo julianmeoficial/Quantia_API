@@ -13,6 +13,21 @@ export const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(32),
   JWT_REFRESH_TTL: z.string().min(1).default('7d'),
 
+  /** Comma-separated CORS allowlist for HTTP + Socket.io (never `*`). */
+  CORS_ORIGINS: z
+    .string()
+    .min(1)
+    .refine(
+      (value) =>
+        !value
+          .split(',')
+          .map((o) => o.trim())
+          .includes('*'),
+      {
+        message: 'CORS_ORIGINS must not include *',
+      },
+    ),
+
   NOTION_TOKEN: z.string().min(1),
   NOTION_WEBHOOK_SECRET: z.string().min(1),
   NOTION_VERSION: z.string().min(1).default('2025-09-03'),
