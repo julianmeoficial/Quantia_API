@@ -38,18 +38,16 @@ Plantilla: [`.env.example`](../../.env.example). **Nunca** commits de secretos.
 |----------|----------------|
 | `NODE_ENV` | `production` |
 | `PORT` | Lo inyecta Railway |
-| Direct (`db.<ref>.supabase.co:5432`) | Preferido si hay IPv6 | `DIRECT_URL` |
-| **Session pooler** (`*.pooler.supabase.com:5432`) | **Usar si Direct es inalcanzable (solo AAAA / sin IPv6)** | `DIRECT_URL` (workaround staging) |
-| Transaction pooler (`*.pooler.supabase.com:6543` + `pgbouncer=true`) | App + worker | `DATABASE_URL` |
-
-Detalle del smoke staging y URL pública: [`deploy-validation.md`](./deploy-validation.md).
-
+| `DATABASE_URL` | Transaction pooler `:6543` + `pgbouncer=true` |
+| `DIRECT_URL` | Direct `:5432` si hay IPv6; si no, **Session pooler** `:5432` (workaround staging) |
 | `REDIS_URL` | Plugin Railway (`redis://` o `rediss://`) |
 | `JWT_*` | Secretos **nuevos** (no reutilizar local) |
 | `CORS_ORIGINS` | Dominio front cuando exista + localhost si hace falta |
 | `CORS_VERCEL_PREVIEW` | `true` en staging |
 | `NODE_OPTIONS` | `--max-old-space-size=350` (trial 0.5 GB) |
-| `NOTION_*` / `SUPABASE_*` | Igual F3/F5; `NOTION_WEBHOOK_SECRET` = `verification_token` del handshake |
+| `NOTION_*` / `SUPABASE_*` | `NOTION_WEBHOOK_SECRET` = `verification_token` del handshake |
+
+Detalle smoke + URL pública: [`deploy-validation.md`](./deploy-validation.md).
 
 Script local/CI de migrate: [`scripts/railway-migrate.sh`](../../scripts/railway-migrate.sh).
 
@@ -72,17 +70,18 @@ La misma regla aplica a HTTP y a Socket.io ([`cors.util.ts`](../../src/common/co
 
 ## Notion — URL estable (sin túnel)
 
-Tras el primer deploy de la API:
+Staging actual:
 
-1. Health OK: `https://<api>.up.railway.app/api/v1/health`
-2. En Notion → Webhooks → URL  
-   `https://<api>.up.railway.app/api/v1/webhooks/notion`
-3. Completar `verification_token` → copiar signing secret → `NOTION_WEBHOOK_SECRET`
-4. Redeploy api + worker
-5. **Quitar** cualquier URL de cloudflared/ngrok
-6. Smoke: editar en sandbox → fila `sync_events` `SYNCED`
+`https://api-production-18cd.up.railway.app/api/v1/webhooks/notion`
 
-Detalle del handshake: [`notion.md`](./notion.md).
+1. Crear/actualizar suscripción en Notion con esa URL.
+2. Pegar el `verification_token` (logs de la API) en **Verify**.
+3. Guardar ese **mismo** token como `NOTION_WEBHOOK_SECRET` (api + worker) y redeploy.
+   No hay un “Webhook secret” aparte; no usar el Access Token de la integración.
+4. Eliminar suscripciones/túneles viejos.
+5. Smoke: editar sandbox → `sync_events` `SYNCED`.
+
+Detalle: [`notion.md`](./notion.md) · checklist: [`deploy-validation.md`](./deploy-validation.md).
 
 ## Rollback
 
