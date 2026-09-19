@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Staging API unificada al servicio Railway **`Quantia_API`** (deploy desde GitHub `main`): dominio `https://quantiaapi-production.up.railway.app`. Nueva suscripción Notion + `NOTION_WEBHOOK_SECRET` rotado; docs/Bruno actualizados. Servicio `api` (`api-production-18cd…`) queda legacy/deprecar. ENG-157 cerrado.
+
 ### Added
 
 - F7 stabilisation / Security handoff (ENG-126): committed `openapi/openapi.json` + `npm run openapi:export`, Bruno collection (`bruno/`), expanded seed (budgets/docs/reports/audit), RLS migration (`ENABLE ROW LEVEL SECURITY` + revoke `anon`/`authenticated`), inventory + handoff docs. Functional freeze after merge.

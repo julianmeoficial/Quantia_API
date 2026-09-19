@@ -8,9 +8,10 @@ Linear: [ENG-126](https://linear.app/brevku/issue/ENG-126/f7-estabilizacion-y-ha
 
 | Resource | Value |
 |----------|--------|
-| API | `https://api-production-18cd.up.railway.app` |
+| API | `https://quantiaapi-production.up.railway.app` (**GitHub** service `Quantia_API`) |
 | Health | `GET /api/v1/health` |
-| Notion webhook | `POST /api/v1/webhooks/notion` |
+| Notion webhook | `POST /api/v1/webhooks/notion` (suscripción nueva 2026-09-19; secret = verification_token) |
+| Deploy | merge → `main` auto-deploy; legacy `api` (`api-production-18cd…`) deprecar |
 | Postgres | Supabase (pooler `:6543` app; session pooler `:5432` as `DIRECT_URL` workaround) |
 | Redis | Railway plugin |
 | OpenAPI (committed) | [`openapi/openapi.json`](../../openapi/openapi.json) |
@@ -64,13 +65,13 @@ Implication: PostgREST / publishable keys cannot read app data. The Nest API rem
 ## Smoke checklist
 
 ```bash
-curl -sS https://api-production-18cd.up.railway.app/api/v1/health
+curl -sS https://quantiaapi-production.up.railway.app/api/v1/health
 curl -sS -o /dev/null -w '%{http_code}\n' \
-  https://api-production-18cd.up.railway.app/api/v1/users/me
+  https://quantiaapi-production.up.railway.app/api/v1/users/me
 # expect 401
 
 # Login seed admin
-curl -sS -X POST https://api-production-18cd.up.railway.app/api/v1/auth/login \
+curl -sS -X POST https://quantiaapi-production.up.railway.app/api/v1/auth/login \
   -H 'content-type: application/json' \
   -d '{"email":"admin@quantia.local","password":"AdminPass1!"}'
 ```
@@ -84,7 +85,7 @@ Classified under ENG-126:
 | Class | Issue |
 |-------|--------|
 | Blocking | [ENG-156](https://linear.app/brevku/issue/ENG-156) Supabase Direct IPv6 — Session pooler workaround |
-| Blocking | [ENG-157](https://linear.app/brevku/issue/ENG-157) Railway GitHub connect needs account token |
+| ~~Blocking~~ **Done** | [ENG-157](https://linear.app/brevku/issue/ENG-157) GitHub connect — servicio `Quantia_API` + vars |
 | Non-blocking | [ENG-158](https://linear.app/brevku/issue/ENG-158) Migrate `railway.toml` → IaC |
 | Non-blocking | [ENG-159](https://linear.app/brevku/issue/ENG-159) Manual Notion `SYNCED` smoke |
 

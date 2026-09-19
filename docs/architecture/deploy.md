@@ -8,25 +8,29 @@ proyecto aparte (`quantia-production`) con JWT/DB/Redis propios cuando pase a Ho
 
 ## Servicios (staging)
 
-| Servicio | Imagen | Comando | Dominio | Healthcheck |
+| Servicio | Origen | Comando | Dominio | Healthcheck |
 |----------|--------|---------|---------|-------------|
+| `Quantia_API` | **GitHub** `main` (primario) | `node dist/main.js` | `quantiaapi-production.up.railway.app` | `GET /api/v1/health` |
+| `worker` | misma imagen / redeploy | `node dist/worker.js` | no | **desactivado** (sin HTTP) |
 | `migrate` | Dockerfile `target: migrate` | `npx prisma migrate deploy` | no | one-shot |
-| `api` | Dockerfile `runner` | `node dist/main.js` | HTTPS público | `GET /api/v1/health` |
-| `worker` | misma `runner` | `node dist/worker.js` | no | **desactivado** (sin HTTP) |
 | Redis | plugin Railway | — | interno | — |
+| `api` | **legacy** (`railway up`) | — | `api-production-18cd…` | deprecar / no usar |
 
-Misma imagen para api y worker; solo cambia el start command ([`railway.toml`](../../railway.toml)).
+Deploy automático: merge a `main` → Railway construye `Quantia_API`. No hace falta `railway up` para la API.
+
+Misma imagen runner para API y worker; solo cambia el start command ([`railway.toml`](../../railway.toml)).
 
 ```mermaid
 flowchart LR
-  NotionWH["Notion webhook HTTPS"] --> Api["Railway api"]
-  Vercel["Vercel front / previews"] -->|"HTTPS + WSS"| Api
-  Api --> Pooler["Supabase pooler 6543"]
+  GH["GitHub main"] --> QuantiaAPI["Railway Quantia_API"]
+  NotionWH["Notion webhook HTTPS"] --> QuantiaAPI
+  Vercel["Vercel front / previews"] -->|"HTTPS + WSS"| QuantiaAPI
+  QuantiaAPI --> Pooler["Supabase pooler 6543"]
   Migrate["migrate one-shot"] --> Direct["Supabase 5432"]
-  Api --> Redis[(Railway Redis)]
+  QuantiaAPI --> Redis[(Railway Redis)]
   Worker["Railway worker"] --> Redis
   Worker --> Pooler
-  Api --> Storage["Supabase Storage"]
+  QuantiaAPI --> Storage["Supabase Storage"]
   Worker --> Storage
 ```
 
@@ -72,13 +76,13 @@ La misma regla aplica a HTTP y a Socket.io ([`cors.util.ts`](../../src/common/co
 
 Staging actual:
 
-`https://api-production-18cd.up.railway.app/api/v1/webhooks/notion`
+`https://quantiaapi-production.up.railway.app/api/v1/webhooks/notion`
 
 1. Crear/actualizar suscripción en Notion con esa URL.
 2. Pegar el `verification_token` (logs de la API) en **Verify**.
-3. Guardar ese **mismo** token como `NOTION_WEBHOOK_SECRET` (api + worker) y redeploy.
+3. Guardar ese **mismo** token como `NOTION_WEBHOOK_SECRET` (`Quantia_API` + `worker`) y redeploy.
    No hay un “Webhook secret” aparte; no usar el Access Token de la integración.
-4. Eliminar suscripciones/túneles viejos.
+4. Eliminar suscripciones/túneles viejos (incluida cualquier URL `api-production-18cd…`).
 5. Smoke: editar sandbox → `sync_events` `SYNCED`.
 
 Detalle: [`notion.md`](./notion.md) · checklist: [`deploy-validation.md`](./deploy-validation.md).

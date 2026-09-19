@@ -77,7 +77,7 @@ Expected log: worker Nest app ready (BullMQ `notion-sync` consumer in F3).
 ## Webhook Notion
 
 **Staging (actual):**  
-`https://api-production-18cd.up.railway.app/api/v1/webhooks/notion`  
+`https://quantiaapi-production.up.railway.app/api/v1/webhooks/notion`  
 Ver [`deploy-validation.md`](../architecture/deploy-validation.md). **No uses túnel**
 mientras staging esté arriba.
 
