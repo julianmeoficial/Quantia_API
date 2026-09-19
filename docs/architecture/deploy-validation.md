@@ -49,7 +49,12 @@ Then Notion:
 - [x] Health 200 on Railway staging
 - [x] Webhook URL on Railway (no tunnel)
 - [x] `verification_token` = `NOTION_WEBHOOK_SECRET` en `.env` local **y** Railway (`api` + `worker`); redeploy tras setear
+- [x] Protected route without JWT → 401
 - [ ] Manual smoke: Notion edit → `SYNCED` in Postgres
+
+## F7 handoff
+
+- OpenAPI / Bruno / inventory / seed / RLS: [`handoff-security.md`](./handoff-security.md)
 
 ## Findings from this validation
 

@@ -101,11 +101,15 @@ Imágenes ligadas al commit SHA del repo (`RAILWAY_GIT_COMMIT_SHA`).
 En trial: evitar reportes Excel/PDF muy grandes (riesgo OOM). Production = **otro**
 proyecto Railway + otro Redis + otro JWT + (idealmente) otro proyecto Supabase.
 
+## RLS (F7)
+
+Ver [`handoff-security.md`](./handoff-security.md). Migración `20260919000000_enable_rls`: RLS on + revoke PostgREST roles; Nest `DATABASE_URL` sigue con bypass (sin `FORCE`).
+
 ## Checklist de salida F6
 
 - [x] Health 200 on Railway staging
 - [x] Webhook Notion HTTPS sin túnel
-- [ ] 401 without JWT on protected route
+- [x] 401 without JWT on protected route
 - [ ] Origin CORS arbitrario rechazado; preview Vercel permitido si el flag está on
 - [ ] Smoke WSS con JWT (manual)
 - [ ] Front Vercel consume API (cuando exista el front)

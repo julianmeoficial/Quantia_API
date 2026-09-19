@@ -32,6 +32,7 @@
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:seed": "prisma db seed",
+    "openapi:export": "ts-node --project scripts/tsconfig.openapi.json scripts/export-openapi.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {
