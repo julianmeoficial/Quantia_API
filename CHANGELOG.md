@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Docs: Notion webhook staging URL on Railway; clarify `NOTION_WEBHOOK_SECRET` equals the handshake `verification_token` (not the integration Access Token); tunnel is optional/local-only.
+- Docs: Railway staging deploy validation notes (`deploy-validation.md`).
 - F6 observability + Railway staging deploy (ENG-125): `nestjs-pino` JSON logs with `requestId` / `X-Request-Id`, CORS allowlist + optional Vercel preview origins, `railway.toml` + migrate script, docs in `docs/architecture/deploy.md`. Staging-only on trial; production deferred to Hobby.
 - F5 presupuesto / documentos / reportes (ENG-124): modelos Budget/Document/Report/AuditLog (solo Postgres, sin Notion), StorageModule Supabase (buckets privados + signed URLs), AuditInterceptor, generación PDF/Excel en worker BullMQ (`reports`), alerta `presupuesto.ejecucion-baja` por subejecución, contracts 0.5.0, docs en `docs/architecture/budget-storage-reports.md`.
 - F4 Socket.io realtime (ENG-123): namespaces `/projects` + `/notifications`, JWT handshake, membership `join`, Redis adapter + `quantia:realtime` bridge (API + worker via `RealtimeEmitter`), contract events, `CORS_ORIGINS`, docs in `docs/architecture/realtime.md`.

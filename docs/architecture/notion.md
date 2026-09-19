@@ -34,56 +34,48 @@ API version: `2025-09-03` (data source queries).
 
 ## NO OLVIDAR — URL del webhook (túnel local → Railway)
 
-Notion **no** puede llamar a `localhost`. La suscripción del webhook necesita una URL **pública HTTPS**. Esa URL **cambia** según el entorno; hay que actualizarla en Notion y **volver a verificar** (y reasignar `NOTION_WEBHOOK_SECRET` si Notion emite uno nuevo).
+Notion **no** puede llamar a `localhost`. La suscripción del webhook necesita una URL **pública HTTPS**.
 
-| Etapa | Dónde corre la API | URL a pegar en Notion (Create subscription) |
-|-------|--------------------|-----------------------------------------------|
-| Dev / prueba sandbox | Host + túnel (cloudflared / ngrok) | `https://<subdominio-del-túnel>/api/v1/webhooks/notion` |
-| **Staging (F6)** | Railway `quantia-staging` | `https://<api>.up.railway.app/api/v1/webhooks/notion` |
-| Production (Hobby, octubre) | Railway `quantia-production` | `https://<api-prod>.up.railway.app/api/v1/webhooks/notion` |
+| Etapa | Dónde corre la API | URL a pegar en Notion |
+|-------|--------------------|------------------------|
+| Dev local (opcional) | Host + túnel cloudflared | `https://<túnel>/api/v1/webhooks/notion` |
+| **Staging (actual)** | Railway | `https://api-production-18cd.up.railway.app/api/v1/webhooks/notion` |
+| Production (Hobby, octubre) | Railway prod | `https://<api-prod>.up.railway.app/api/v1/webhooks/notion` |
 
-> **Staging es el destino real del webhook** mientras no exista production.
-> Tras el primer deploy F6, **no dejes la suscripción apuntando al túnel**.
-> Guía completa de servicios Railway: [`deploy.md`](./deploy.md).
+> **Staging es el destino real.** No dejes una suscripción apuntando a un túnel
+> cloudflared: los eventos dejan de llegar en silencio.
+> Guía Railway: [`deploy.md`](./deploy.md) · smoke: [`deploy-validation.md`](./deploy-validation.md).
 
+**Checklist al crear / cambiar suscripción:**
 
-**Checklist obligatorio al cambiar de entorno:**
+1. URL pública HTTPS de la API (arriba).
+2. Notion envía un POST único con `verification_token` (sin firma). La API lo
+   loguea y responde 200. Pégalo en el diálogo **Verify** de Notion.
+3. Ese **mismo** `verification_token` es la clave HMAC de todos los eventos
+   posteriores (`X-Notion-Signature`). Guardarlo como `NOTION_WEBHOOK_SECRET`
+   en `.env` y en Railway (api + worker). **No** es el Access Token de la
+   integración (`NOTION_TOKEN` / `ntn_…`). Notion **no** muestra un “Webhook
+   secret” aparte tras verificar.
+4. Redeploy api + worker tras setear el secret.
+5. Borrar cualquier suscripción/túnel viejo.
+6. Smoke: editar en sandbox → fila `sync_events` `SYNCED`.
 
-1. Desplegar la API en el nuevo host (o levantar túnel local).
-2. En la integración Notion → Webhooks → editar/crear suscripción con la **URL nueva**.
-3. Completar el handshake: Notion envía `verification_token` una vez; la API responde `{ "verification_token": "..." }` (también aparece en logs). Pegarlo en el diálogo de Notion.
-4. Copiar el **secret de firma** que Notion muestra tras verificar → `NOTION_WEBHOOK_SECRET` en el `.env` / variables de Railway.
-5. Reiniciar API (y worker) con el secret nuevo.
-6. Probar de nuevo el checklist de salida (crear en Notion → fila `SYNCED`, etc.).
+### Túnel local (solo si no hay staging)
 
-> **No dejes la suscripción apuntando al túnel de desarrollo** después de desplegar en Railway: los eventos dejan de llegar y el sync se “rompe” en silencio.
-
-### Levantar túnel local (dev)
-
-Prerrequisitos: Postgres + Redis (`docker compose up postgres redis -d`), API en `:3000` (`npm run start:dev`), worker (`npm run worker:dev`).
+Prerrequisitos: Postgres + Redis, API en `:3000`, worker.
 
 ```bash
-# Opción A — Cloudflare quick tunnel (sin cuenta; URL efímera)
-docker run --rm --network host cloudflare/cloudflared:latest \
-  tunnel --url http://127.0.0.1:3000
-
-# En macOS Docker Desktop, si --network host no enruta al host:
 docker run --rm cloudflare/cloudflared:latest \
   tunnel --url http://host.docker.internal:3000
 ```
 
-Cuando cloudflared imprima algo como `https://random-words.trycloudflare.com`, la URL de Notion es:
-
-```text
-https://random-words.trycloudflare.com/api/v1/webhooks/notion
-```
-
-El handshake de `verification_token` **no** exige firma HMAC; el secret se configura **después** de verificar la suscripción.
+URL de ejemplo: `https://<subdominio>.trycloudflare.com/api/v1/webhooks/notion`.
 
 ### Secrets
 
-1. `NOTION_TOKEN` — token de la integración (Internal), conectada a la página sandbox.
-2. `NOTION_WEBHOOK_SECRET` — sale del panel de Webhooks **después** de verificar la suscripción (no inventarlo antes salvo placeholder para arrancar la API).
+1. `NOTION_TOKEN` — Internal Integration Token (REST / sync). **No** firmar webhooks.
+2. `NOTION_WEBHOOK_SECRET` — el `verification_token` del handshake (`secret_…`).
+   Si se pierde, hay que **borrar y recrear** la suscripción (Notion no lo reexpone).
 
 ## Security
 
