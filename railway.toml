@@ -1,0 +1,30 @@
+# Railway service defaults for Quantia staging.
+# Create three services from the same GitHub repo:
+#   - api     (public HTTPS)  — uses this file as-is
+#   - worker  (no domain)     — override startCommand + disable HTTP healthcheck
+#   - migrate (one-shot)      — build target "migrate", startCommand migrate deploy
+#
+# Dashboard overrides beat this file. Keep secrets ONLY in Railway Variables.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+# runner = default final stage (api + worker). migrate service must set:
+#   RAILWAY_DOCKERFILE_TARGET=migrate   (or Build Args / custom Dockerfile path)
+
+[deploy]
+startCommand = "node dist/main.js"
+healthcheckPath = "/api/v1/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+# Worker service overrides (set in Railway UI / service variables):
+#   startCommand = node dist/worker.js
+#   healthcheckPath = (empty / disabled — worker has no HTTP listener)
+#   NODE_OPTIONS = --max-old-space-size=350
+#
+# Migrate service (one-shot before api/worker traffic):
+#   Docker build target = migrate
+#   startCommand = npx prisma migrate deploy
+#   Requires DIRECT_URL (Supabase 5432). Do not share REDIS with migrate.

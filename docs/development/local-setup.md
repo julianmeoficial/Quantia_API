@@ -63,9 +63,13 @@ npm run worker:dev
 
 Expected log: worker Nest app ready (BullMQ `notion-sync` consumer in F3).
 
-## Webhook Notion (túnel local)
+## Webhook Notion
 
-Notion no alcanza `localhost`. Con la API en `:3000`:
+**Staging (F6):** la URL pública estable es la de Railway — ver
+[`docs/architecture/deploy.md`](../architecture/deploy.md). No uses el túnel
+cuando staging esté arriba.
+
+**Dev local opcional:** Notion no alcanza `localhost`. Con la API en `:3000`:
 
 ```bash
 docker run --rm cloudflare/cloudflared:latest \
@@ -78,7 +82,7 @@ URL a registrar en Notion:
 https://<subdominio>.trycloudflare.com/api/v1/webhooks/notion
 ```
 
-**Al desplegar en Railway:** sustituye esa URL en la suscripción de Notion, re-verifica y actualiza `NOTION_WEBHOOK_SECRET`. Detalle y checklist: [`docs/architecture/notion.md`](../architecture/notion.md) (sección **NO OLVIDAR**).
+**Al desplegar / cambiar de entorno:** sustituye la URL en la suscripción de Notion, re-verifica y actualiza `NOTION_WEBHOOK_SECRET`. Detalle: [`docs/architecture/notion.md`](../architecture/notion.md) (sección **NO OLVIDAR**).
 
 ## Socket.io (F4)
 

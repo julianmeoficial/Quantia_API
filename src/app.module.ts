@@ -7,6 +7,7 @@ import { CommonModule } from './common/common.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { AppLoggerModule } from './common/logger/logger.module';
 import { AppConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 import { DocumentsModule } from './documents/documents.module';
@@ -24,6 +25,7 @@ import { UsersModule } from './users/users.module';
 @Module({
   imports: [
     AppConfigModule,
+    AppLoggerModule,
     DatabaseModule,
     RedisModule,
     CommonModule,

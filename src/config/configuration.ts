@@ -13,6 +13,9 @@ export default (): EnvConfig => ({
 
   CORS_ORIGINS:
     process.env.CORS_ORIGINS ?? 'http://localhost:3000,http://127.0.0.1:3000',
+  CORS_VERCEL_PREVIEW:
+    process.env.CORS_VERCEL_PREVIEW === 'true' ||
+    process.env.CORS_VERCEL_PREVIEW === '1',
 
   NOTION_TOKEN: process.env.NOTION_TOKEN ?? '',
   NOTION_WEBHOOK_SECRET: process.env.NOTION_WEBHOOK_SECRET ?? '',
