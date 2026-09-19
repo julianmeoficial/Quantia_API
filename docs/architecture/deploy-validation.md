@@ -48,7 +48,7 @@ Then Notion:
 
 - [x] Health 200 on Railway staging
 - [x] Webhook URL on Railway (no tunnel)
-- [x] `verification_token` captured; stored as `NOTION_WEBHOOK_SECRET` (local `.env` + Railway api/worker) and redeployed
+- [x] `verification_token` = `NOTION_WEBHOOK_SECRET` en `.env` local **y** Railway (`api` + `worker`); redeploy tras setear
 - [ ] Manual smoke: Notion edit → `SYNCED` in Postgres
 
 ## Findings from this validation
