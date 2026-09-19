@@ -49,7 +49,7 @@ Detalle del smoke staging y URL pública: [`deploy-validation.md`](./deploy-vali
 | `CORS_ORIGINS` | Dominio front cuando exista + localhost si hace falta |
 | `CORS_VERCEL_PREVIEW` | `true` en staging |
 | `NODE_OPTIONS` | `--max-old-space-size=350` (trial 0.5 GB) |
-| `NOTION_*` / `SUPABASE_*` | Igual F3/F5; webhook secret tras verificar en Notion |
+| `NOTION_*` / `SUPABASE_*` | Igual F3/F5; `NOTION_WEBHOOK_SECRET` = `verification_token` del handshake |
 
 Script local/CI de migrate: [`scripts/railway-migrate.sh`](../../scripts/railway-migrate.sh).
 
@@ -104,9 +104,9 @@ proyecto Railway + otro Redis + otro JWT + (idealmente) otro proyecto Supabase.
 
 ## Checklist de salida F6
 
-- [ ] `/api/v1/health` 200 en staging
-- [ ] Webhook Notion HTTPS sin túnel
-- [ ] 401 sin JWT en ruta protegida
+- [x] Health 200 on Railway staging
+- [x] Webhook Notion HTTPS sin túnel
+- [ ] 401 without JWT on protected route
 - [ ] Origin CORS arbitrario rechazado; preview Vercel permitido si el flag está on
 - [ ] Smoke WSS con JWT (manual)
 - [ ] Front Vercel consume API (cuando exista el front)

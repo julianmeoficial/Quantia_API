@@ -38,10 +38,18 @@ curl -sSI https://api-production-18cd.up.railway.app/api/v1/health | grep -i x-r
 
 Then Notion:
 
-1. Webhook URL → `.../api/v1/webhooks/notion`
-2. Verify subscription → set `NOTION_WEBHOOK_SECRET` → redeploy api+worker
-3. Remove cloudflared URL
-4. Edit sandbox page → `sync_events` row `SYNCED`
+1. Webhook URL → `https://api-production-18cd.up.railway.app/api/v1/webhooks/notion`
+2. Paste `verification_token` from API logs into Notion **Verify**
+3. Set `NOTION_WEBHOOK_SECRET` to that **same** token (it is the HMAC key; Notion does not show a separate “webhook secret”)
+4. Redeploy api + worker; delete any cloudflared subscription
+5. Edit sandbox page → `sync_events` row `SYNCED`
+
+## Status (2026-09-19)
+
+- [x] Health 200 on Railway staging
+- [x] Webhook URL on Railway (no tunnel)
+- [x] `verification_token` captured; stored as `NOTION_WEBHOOK_SECRET` (local `.env` + Railway api/worker) and redeployed
+- [ ] Manual smoke: Notion edit → `SYNCED` in Postgres
 
 ## Findings from this validation
 

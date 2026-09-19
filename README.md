@@ -146,7 +146,7 @@ GitHub Actions ejecuta en cada PR y push a `main`:
 | [`docs/architecture/docker.md`](docs/architecture/docker.md) | Imágenes y contenedores Docker, stages, flujo de arranque |
 | [`docs/architecture/auth.md`](docs/architecture/auth.md) | Auth JWT, roles, refresh rotativo (F1 / ENG-119) |
 | [`docs/architecture/domain.md`](docs/architecture/domain.md) | Proyectos, tareas, avances y pertenencia (F2 / ENG-122) |
-| [`docs/architecture/notion.md`](docs/architecture/notion.md) | Sync Notion ↔ Postgres (F3 / ENG-120). **NO OLVIDAR:** al pasar de túnel local a Railway hay que **cambiar la URL del webhook en Notion** y volver a verificar + actualizar `NOTION_WEBHOOK_SECRET`. |
+| [`docs/architecture/notion.md`](docs/architecture/notion.md) | Sync Notion ↔ Postgres. Webhook staging: Railway HTTPS; `NOTION_WEBHOOK_SECRET` = `verification_token` del handshake (no el Access Token). |
 | [`docs/architecture/realtime.md`](docs/architecture/realtime.md) | Socket.io namespaces, JWT handshake, rooms, Redis bridge (F4 / ENG-123) |
 | [`docs/architecture/budget-storage-reports.md`](docs/architecture/budget-storage-reports.md) | Presupuesto (solo Postgres), Storage firmado, reportes async PDF/Excel (F5 / ENG-124) |
 | [`docs/architecture/deploy.md`](docs/architecture/deploy.md) | Railway staging, migrate, logs JSON, CORS, Notion HTTPS sin túnel (F6 / ENG-125) |
