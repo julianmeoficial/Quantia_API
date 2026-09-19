@@ -10,6 +10,7 @@ coverage
 .env.*.local
 !.env.example
 !.env.test
+.railway-token
 
 packages/contracts/dist
 *.tsbuildinfo
