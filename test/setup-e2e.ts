@@ -10,6 +10,7 @@ process.env.JWT_ACCESS_TTL ??= '15m';
 process.env.JWT_REFRESH_SECRET ??= 'quantia-test-refresh-secret-change-me-32';
 process.env.JWT_REFRESH_TTL ??= '7d';
 process.env.CORS_ORIGINS ??= 'http://localhost:3000,http://127.0.0.1:3000';
+process.env.CORS_VERCEL_PREVIEW ??= 'false';
 
 process.env.NOTION_TOKEN ??= 'ntn_test_token_placeholder_for_e2e';
 process.env.NOTION_WEBHOOK_SECRET ??= 'whsec_test_webhook_secret_for_e2e';

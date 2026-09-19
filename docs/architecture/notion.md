@@ -39,7 +39,13 @@ Notion **no** puede llamar a `localhost`. La suscripción del webhook necesita u
 | Etapa | Dónde corre la API | URL a pegar en Notion (Create subscription) |
 |-------|--------------------|-----------------------------------------------|
 | Dev / prueba sandbox | Host + túnel (cloudflared / ngrok) | `https://<subdominio-del-túnel>/api/v1/webhooks/notion` |
-| Staging / prod (F6) | Railway (u host aprobado) | `https://<host-railway-de-la-api>/api/v1/webhooks/notion` |
+| **Staging (F6)** | Railway `quantia-staging` | `https://<api>.up.railway.app/api/v1/webhooks/notion` |
+| Production (Hobby, octubre) | Railway `quantia-production` | `https://<api-prod>.up.railway.app/api/v1/webhooks/notion` |
+
+> **Staging es el destino real del webhook** mientras no exista production.
+> Tras el primer deploy F6, **no dejes la suscripción apuntando al túnel**.
+> Guía completa de servicios Railway: [`deploy.md`](./deploy.md).
+
 
 **Checklist obligatorio al cambiar de entorno:**
 

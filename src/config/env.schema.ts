@@ -28,6 +28,16 @@ export const envSchema = z.object({
       },
     ),
 
+  /**
+   * When true, also allow `https://*.vercel.app` (anchored subdomain only).
+   * Set on staging so Vercel preview deploys can call the API.
+   */
+  CORS_VERCEL_PREVIEW: z
+    .union([z.boolean(), z.enum(['true', 'false', '1', '0'])])
+    .optional()
+    .default(false)
+    .transform((value) => value === true || value === 'true' || value === '1'),
+
   NOTION_TOKEN: z.string().min(1),
   NOTION_WEBHOOK_SECRET: z.string().min(1),
   NOTION_VERSION: z.string().min(1).default('2025-09-03'),

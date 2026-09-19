@@ -12,6 +12,7 @@ describe('validateEnv', () => {
     JWT_REFRESH_SECRET: 'quantia-test-refresh-secret-change-me-32',
     JWT_REFRESH_TTL: '7d',
     CORS_ORIGINS: 'http://localhost:3000,http://127.0.0.1:3000',
+    CORS_VERCEL_PREVIEW: 'false',
     NOTION_TOKEN: 'ntn_test_token_placeholder',
     NOTION_WEBHOOK_SECRET: 'whsec_test_secret',
     NOTION_VERSION: '2025-09-03',
@@ -74,5 +75,16 @@ describe('validateEnv', () => {
     expect(() => validateEnv({ ...validEnv, CORS_ORIGINS: '*' })).toThrow(
       'Environment validation failed',
     );
+  });
+
+  it('parses CORS_VERCEL_PREVIEW boolean strings', () => {
+    expect(
+      validateEnv({ ...validEnv, CORS_VERCEL_PREVIEW: 'true' })
+        .CORS_VERCEL_PREVIEW,
+    ).toBe(true);
+    expect(
+      validateEnv({ ...validEnv, CORS_VERCEL_PREVIEW: 'false' })
+        .CORS_VERCEL_PREVIEW,
+    ).toBe(false);
   });
 });

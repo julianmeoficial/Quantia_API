@@ -4,6 +4,10 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import Redis from 'ioredis';
 import { Server, type ServerOptions } from 'socket.io';
+import {
+  createCorsOriginDelegate,
+  parseCorsOrigins,
+} from '../common/cors.util';
 import type { EnvConfig } from '../config/env.schema';
 
 export class RedisIoAdapter extends IoAdapter {
@@ -11,7 +15,12 @@ export class RedisIoAdapter extends IoAdapter {
   private adapterConstructor: ReturnType<typeof createAdapter> | null = null;
   private pubClient: Redis | null = null;
   private subClient: Redis | null = null;
-  private corsOrigins: string[] = [];
+  private corsOrigin:
+    | ((
+        origin: string | undefined,
+        callback: (err: Error | null, allow?: boolean) => void,
+      ) => void)
+    | string[] = [];
 
   constructor(private readonly app: INestApplicationContext) {
     super(app);
@@ -20,11 +29,13 @@ export class RedisIoAdapter extends IoAdapter {
   async connectToRedis(): Promise<void> {
     const config = this.app.get(ConfigService<EnvConfig, true>);
     const url = config.get('REDIS_URL', { infer: true });
-    this.corsOrigins = config
-      .get('CORS_ORIGINS', { infer: true })
-      .split(',')
-      .map((origin) => origin.trim())
-      .filter(Boolean);
+    const allowlist = parseCorsOrigins(
+      config.get('CORS_ORIGINS', { infer: true }),
+    );
+    const allowVercelPreview = config.get('CORS_VERCEL_PREVIEW', {
+      infer: true,
+    });
+    this.corsOrigin = createCorsOriginDelegate(allowlist, allowVercelPreview);
 
     this.pubClient = new Redis(url, {
       maxRetriesPerRequest: null,
@@ -46,7 +57,7 @@ export class RedisIoAdapter extends IoAdapter {
     const server = super.createIOServer(port, {
       ...options,
       cors: {
-        origin: this.corsOrigins,
+        origin: this.corsOrigin,
         credentials: true,
       },
     }) as Server;

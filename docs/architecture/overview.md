@@ -117,7 +117,7 @@ Modules by phase:
 | F3 ✓ | `src/notion/`, jobs in worker | Bidirectional Notion ↔ Postgres sync |
 | F4 ✓ | `src/realtime/` | Socket.io gateway (`/projects`, `/notifications`), Redis adapter + bridge |
 | F5 ✓ | `src/budget/`, `src/documents/`, `src/reports/`, `src/storage/`, `src/audit/` | Financial execution (Postgres only), Storage, PDF/Excel |
-| F6 | observability wiring | Structured logs, Railway deploy |
+| F6 ✓ | `railway.toml`, logger (`nestjs-pino`), `docs/architecture/deploy.md` | Railway staging, JSON logs + requestId, Notion HTTPS |
 | F7 | seeds + OpenAPI inventory | Handoff to Security |
 
 ---
@@ -267,6 +267,7 @@ Use this table to know where to look (and what to update) when changing the API:
 | Understand Notion sync (F3) | [`docs/architecture/notion.md`](./notion.md) |
 | Understand Socket.io realtime (F4) | [`docs/architecture/realtime.md`](./realtime.md) |
 | Understand budget, Storage and reports (F5) | [`docs/architecture/budget-storage-reports.md`](./budget-storage-reports.md) |
+| Understand Railway deploy and observability (F6) | [`docs/architecture/deploy.md`](./deploy.md) |
 | Quick start for contributors | [`README.md`](../../README.md) |
 | Record user-visible changes | [`CHANGELOG.md`](../../CHANGELOG.md) |
 | Env var contract | [`.env.example`](../../.env.example) |
