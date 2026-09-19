@@ -77,7 +77,7 @@ Usuarios de desarrollo (tras `npm run prisma:seed` contra Postgres en `localhost
 | `researcher@quantia.local` | `ResearchPass1!` | INVESTIGADOR |
 | `researcher-b@quantia.local` | `ResearchPass1!` | INVESTIGADOR |
 
-El seed también crea **Proyecto Alpha** (miembro A) y **Proyecto Beta** (miembro B).
+El seed también crea **Proyecto Alpha** (miembro A) y **Proyecto Beta** (miembro B), presupuestos F5, un documento metadata stub, un reporte en cola y `audit_logs` de ejemplo.
 
 ## Dominio (F2)
 
@@ -102,7 +102,8 @@ Detalle de pertenencia y filtros: [`docs/architecture/domain.md`](docs/architect
 | `npm run test` | Tests unitarios |
 | `npm run test:e2e` | Tests e2e (requiere Postgres + Redis) |
 | `npm run prisma:migrate:dev` | Crear/aplicar migraciones en dev |
-| `npm run prisma:seed` | Usuarios demo (admin/coord/researcher) |
+| `npm run prisma:seed` | Seed demo: 4 users, Alpha/Beta, budgets F5 |
+| `npm run openapi:export` | Genera `openapi/openapi.json` (requiere DB+Redis) |
 
 ## Estructura del repositorio
 
@@ -151,11 +152,15 @@ GitHub Actions ejecuta en cada PR y push a `main`:
 | [`docs/architecture/budget-storage-reports.md`](docs/architecture/budget-storage-reports.md) | Presupuesto (solo Postgres), Storage firmado, reportes async PDF/Excel (F5 / ENG-124) |
 | [`docs/architecture/deploy.md`](docs/architecture/deploy.md) | Railway staging, migrate, logs JSON, CORS, Notion HTTPS sin túnel (F6 / ENG-125) |
 | [`docs/architecture/deploy-validation.md`](docs/architecture/deploy-validation.md) | Checklist smoke staging + URLs + hallazgo IPv6 Direct vs Session pooler |
+| [`docs/architecture/inventory.md`](docs/architecture/inventory.md) | Inventario endpoints / WS / jobs / tablas (F7) |
+| [`docs/architecture/handoff-security.md`](docs/architecture/handoff-security.md) | Handoff Seguridad: cuentas seed, OpenAPI/Bruno, RLS, freeze |
 | [`docs/development/local-setup.md`](docs/development/local-setup.md) | Cómo correr localmente (Compose o host) |
+| [`openapi/openapi.json`](openapi/openapi.json) | OpenAPI 3 export (Burp/ZAP) |
+| [`bruno/`](bruno/) | Colección Bruno manual |
 
 ## Roadmap
 
-Desarrollo incremental F0–F7. Fase actual: [ENG-125 — F6 Observabilidad y despliegue en Railway](https://linear.app/brevku/issue/ENG-125/f6-observabilidad-y-despliegue-en-railway) (padre [ENG-116](https://linear.app/brevku/issue/ENG-116)).
+Desarrollo incremental F0–F7. Fase actual: [ENG-126 — F7 Estabilización y handoff a Seguridad](https://linear.app/brevku/issue/ENG-126/f7-estabilizacion-y-handoff-a-seguridad) (padre [ENG-116](https://linear.app/brevku/issue/ENG-116)). **Congelamiento funcional** tras merge F7.
 
 | Fase | Tema |
 |------|------|

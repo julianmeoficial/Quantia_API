@@ -1,6 +1,11 @@
 import {
+  AuditResult,
+  BudgetExecutionKind,
+  DocumentStatus,
   PrismaClient,
   ProjectStatus,
+  ReportKind,
+  ReportStatus,
   RoleName,
   TaskPriority,
   TaskStatus,
@@ -8,6 +13,11 @@ import {
 import * as argon2 from 'argon2';
 
 const prisma = new PrismaClient();
+
+const DOCUMENTS_BUCKET =
+  process.env.SUPABASE_STORAGE_BUCKET_DOCUMENTS ?? 'quantia-documents';
+const REPORTS_BUCKET =
+  process.env.SUPABASE_STORAGE_BUCKET_REPORTS ?? 'quantia-reports';
 
 const users = [
   {
@@ -73,6 +83,13 @@ async function main(): Promise<void> {
   const researcherA = seededUsers['researcher@quantia.local'];
   const researcherB = seededUsers['researcher-b@quantia.local'];
 
+  // Child tables first (F5 + domain) so re-seed is idempotent.
+  await prisma.auditLog.deleteMany();
+  await prisma.report.deleteMany();
+  await prisma.document.deleteMany();
+  await prisma.budgetExecution.deleteMany();
+  await prisma.budgetItem.deleteMany();
+  await prisma.budget.deleteMany();
   await prisma.progress.deleteMany();
   await prisma.task.deleteMany();
   await prisma.projectMember.deleteMany();
@@ -159,7 +176,113 @@ async function main(): Promise<void> {
     },
   });
 
+  const budgetA = await prisma.budget.create({
+    data: {
+      projectId: projectA.id,
+      totalAmount: 50_000_000,
+      currency: 'COP',
+      alertThresholdPercent: 80,
+      items: {
+        create: [
+          {
+            category: 'Personal',
+            plannedAmount: 30_000_000,
+            notes: 'Honorarios investigadores',
+          },
+          {
+            category: 'Equipos',
+            plannedAmount: 20_000_000,
+            notes: 'Hardware / licencias',
+          },
+        ],
+      },
+    },
+    include: { items: true },
+  });
+
+  await prisma.budgetExecution.create({
+    data: {
+      budgetId: budgetA.id,
+      itemId: budgetA.items[0]?.id,
+      kind: BudgetExecutionKind.PAYMENT,
+      amount: 5_000_000,
+      occurredAt: new Date(),
+      registeredById: coord.id,
+      note: 'Anticipo personal — seed F7',
+    },
+  });
+
+  await prisma.budget.create({
+    data: {
+      projectId: projectB.id,
+      totalAmount: 12_000_000,
+      currency: 'COP',
+      alertThresholdPercent: 70,
+      items: {
+        create: [
+          {
+            category: 'Materiales',
+            plannedAmount: 12_000_000,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.document.create({
+    data: {
+      projectId: projectA.id,
+      uploadedById: researcherA.id,
+      storageBucket: DOCUMENTS_BUCKET,
+      storageKey: `seed/${projectA.id}/protocolo-alpha.pdf`,
+      originalName: 'protocolo-alpha.pdf',
+      mimeType: 'application/pdf',
+      sizeBytes: 12_345,
+      status: DocumentStatus.UPLOADED,
+    },
+  });
+
+  await prisma.report.create({
+    data: {
+      projectId: projectA.id,
+      requestedById: coord.id,
+      kind: ReportKind.BUDGET_PDF,
+      status: ReportStatus.QUEUED,
+      storageBucket: REPORTS_BUCKET,
+      storageKey: null,
+      jobId: 'seed-report-placeholder',
+    },
+  });
+
+  await prisma.auditLog.createMany({
+    data: [
+      {
+        actorId: admin.id,
+        action: 'seed.f7',
+        resource: 'project',
+        resourceId: projectA.id,
+        result: AuditResult.SUCCESS,
+        ip: '127.0.0.1',
+        userAgent: 'prisma-seed',
+        metadata: { phase: 'F7', note: 'handoff seed' },
+      },
+      {
+        actorId: coord.id,
+        action: 'budget.execution.create',
+        resource: 'budget',
+        resourceId: budgetA.id,
+        result: AuditResult.SUCCESS,
+        ip: '127.0.0.1',
+        userAgent: 'prisma-seed',
+        metadata: { amount: 5_000_000 },
+      },
+    ],
+  });
+
   console.log(`Seeded projects: ${projectA.title}, ${projectB.title}`);
+  console.log(
+    'Seeded F5: budgets, executions, document metadata stub, report row, audit_logs',
+  );
 }
 
 main()

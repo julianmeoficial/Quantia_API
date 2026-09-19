@@ -11,7 +11,18 @@ cp .env.test .env.seed.local 2>/dev/null || true
 DATABASE_URL=postgresql://quantia:quantia@localhost:5433/quantia \
 DIRECT_URL=postgresql://quantia:quantia@localhost:5433/quantia \
   npm run prisma:seed
+# Seed: 4 users (admin/coord/2 researchers), Alpha/Beta, budgets F5, audit stubs
 ```
+
+Export OpenAPI (API boot deps required):
+
+```bash
+npm run openapi:export
+# → openapi/openapi.json
+```
+
+Manual HTTP: open the [`bruno/`](../../bruno/) collection (env Local or Staging).
+
 
 ## Option B — Host Node.js + containerized data services
 

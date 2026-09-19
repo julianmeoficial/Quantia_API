@@ -1,0 +1,22 @@
+meta {
+  name: Notion Webhook Verify Shape
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/webhooks/notion
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "verification_token": "bruno-smoke-do-not-use-in-prod"
+  }
+}
+
+docs {
+  Public. Staging may return 200 echoing the token (handshake) or reject if already verified.
+  Do not send real signed events without HMAC.
+}

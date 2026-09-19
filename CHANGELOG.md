@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- F7 stabilisation / Security handoff (ENG-126): committed `openapi/openapi.json` + `npm run openapi:export`, Bruno collection (`bruno/`), expanded seed (budgets/docs/reports/audit), RLS migration (`ENABLE ROW LEVEL SECURITY` + revoke `anon`/`authenticated`), inventory + handoff docs. Functional freeze after merge.
 - Docs: Notion webhook staging URL on Railway; clarify `NOTION_WEBHOOK_SECRET` equals the handshake `verification_token` (not the integration Access Token); tunnel is optional/local-only.
 - Docs: Railway staging deploy validation notes (`deploy-validation.md`).
 - F6 observability + Railway staging deploy (ENG-125): `nestjs-pino` JSON logs with `requestId` / `X-Request-Id`, CORS allowlist + optional Vercel preview origins, `railway.toml` + migrate script, docs in `docs/architecture/deploy.md`. Staging-only on trial; production deferred to Hobby.
