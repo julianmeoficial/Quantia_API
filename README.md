@@ -150,6 +150,7 @@ GitHub Actions ejecuta en cada PR y push a `main`:
 | [`docs/architecture/realtime.md`](docs/architecture/realtime.md) | Socket.io namespaces, JWT handshake, rooms, Redis bridge (F4 / ENG-123) |
 | [`docs/architecture/budget-storage-reports.md`](docs/architecture/budget-storage-reports.md) | Presupuesto (solo Postgres), Storage firmado, reportes async PDF/Excel (F5 / ENG-124) |
 | [`docs/architecture/deploy.md`](docs/architecture/deploy.md) | Railway staging, migrate, logs JSON, CORS, Notion HTTPS sin túnel (F6 / ENG-125) |
+| [`docs/architecture/deploy-validation.md`](docs/architecture/deploy-validation.md) | Checklist smoke staging + URLs + hallazgo IPv6 Direct vs Session pooler |
 | [`docs/development/local-setup.md`](docs/development/local-setup.md) | Cómo correr localmente (Compose o host) |
 
 ## Roadmap

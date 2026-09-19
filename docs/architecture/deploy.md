@@ -38,8 +38,12 @@ Plantilla: [`.env.example`](../../.env.example). **Nunca** commits de secretos.
 |----------|----------------|
 | `NODE_ENV` | `production` |
 | `PORT` | Lo inyecta Railway |
-| `DATABASE_URL` | Pooler Supabase `:6543` + `?pgbouncer=true` |
-| `DIRECT_URL` | Directo `:5432` — solo migrate |
+| Direct (`db.<ref>.supabase.co:5432`) | Preferido si hay IPv6 | `DIRECT_URL` |
+| **Session pooler** (`*.pooler.supabase.com:5432`) | **Usar si Direct es inalcanzable (solo AAAA / sin IPv6)** | `DIRECT_URL` (workaround staging) |
+| Transaction pooler (`*.pooler.supabase.com:6543` + `pgbouncer=true`) | App + worker | `DATABASE_URL` |
+
+Detalle del smoke staging y URL pública: [`deploy-validation.md`](./deploy-validation.md).
+
 | `REDIS_URL` | Plugin Railway (`redis://` o `rediss://`) |
 | `JWT_*` | Secretos **nuevos** (no reutilizar local) |
 | `CORS_ORIGINS` | Dominio front cuando exista + localhost si hace falta |
