@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Fixes_1 / F7 debt:** Session pooler `:5432` es la política staging oficial de `DIRECT_URL` (ENG-156); smoke Notion → `sync_events` `SYNCED` documentado (ENG-159); Railway Config as Code (`railway.toml`) migrado a Infrastructure as Code [`.railway/railway.ts`](.railway/railway.ts) (ENG-158).
 - Staging API unificada al servicio Railway **`Quantia_API`** (deploy desde GitHub `main`): dominio `https://quantiaapi-production.up.railway.app`. Nueva suscripción Notion + `NOTION_WEBHOOK_SECRET` rotado; docs/Bruno actualizados. Servicio `api` (`api-production-18cd…`) queda legacy/deprecar. ENG-157 cerrado.
 
 ### Added
