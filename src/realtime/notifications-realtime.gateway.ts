@@ -15,7 +15,7 @@ import { WsAuthService } from './ws-auth.service';
 
 @WebSocketGateway({
   namespace: RealtimeNamespace.NOTIFICATIONS,
-  cors: { origin: true, credentials: true },
+  // CORS owned by RedisIoAdapter (CORS_ORIGINS allowlist; never origin: true).
 })
 export class NotificationsRealtimeGateway
   implements OnGatewayConnection, OnGatewayDisconnect

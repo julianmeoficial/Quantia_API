@@ -111,10 +111,14 @@ describe('Auth & Users (e2e)', () => {
   });
 
   afterAll(async () => {
-    await prisma.refreshToken.deleteMany();
-    await prisma.userRole.deleteMany();
-    await prisma.user.deleteMany();
-    await app.close();
+    if (prisma) {
+      await prisma.refreshToken.deleteMany();
+      await prisma.userRole.deleteMany();
+      await prisma.user.deleteMany();
+    }
+    if (app) {
+      await app.close();
+    }
   });
 
   const login = async (email: string, password: string) => {
@@ -187,5 +191,91 @@ describe('Auth & Users (e2e)', () => {
       .post('/api/v1/auth/refresh')
       .send({ refreshToken: refreshedBody.refreshToken })
       .expect(401);
+  });
+
+  it('revokes the whole family when a rotated refresh is reused', async () => {
+    const loginBody = await login('admin@quantia.test', passwords.admin);
+
+    const rotated = await request(app.getHttpServer())
+      .post('/api/v1/auth/refresh')
+      .send({ refreshToken: loginBody.refreshToken })
+      .expect(200);
+    const rotatedBody = rotated.body as AuthTokensBody;
+
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/refresh')
+      .send({ refreshToken: loginBody.refreshToken })
+      .expect(401);
+
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/refresh')
+      .send({ refreshToken: rotatedBody.refreshToken })
+      .expect(401);
+  });
+
+  it('rejects access tokens with alg none', async () => {
+    const header = Buffer.from(
+      JSON.stringify({ alg: 'none', typ: 'JWT' }),
+    ).toString('base64url');
+    const payload = Buffer.from(
+      JSON.stringify({
+        sub: '00000000-0000-4000-8000-000000000001',
+        email: 'x@y.z',
+        roles: [RoleName.ADMINISTRADOR],
+      }),
+    ).toString('base64url');
+    const forged = `${header}.${payload}.`;
+
+    await request(app.getHttpServer())
+      .get('/api/v1/users/me')
+      .set('Authorization', `Bearer ${forged}`)
+      .expect(401);
+  });
+
+  it('rejects access tokens with wrong audience', async () => {
+    const { JwtService } = await import('@nestjs/jwt');
+    const jwt = new JwtService();
+    const bad = await jwt.signAsync(
+      {
+        sub: '00000000-0000-4000-8000-000000000001',
+        email: 'x@y.z',
+        roles: [RoleName.ADMINISTRADOR],
+      },
+      {
+        secret: process.env.JWT_ACCESS_SECRET,
+        algorithm: 'HS256',
+        issuer: process.env.JWT_ISSUER ?? 'quantia-api',
+        audience: 'wrong-audience',
+        expiresIn: '15m',
+      },
+    );
+
+    await request(app.getHttpServer())
+      .get('/api/v1/users/me')
+      .set('Authorization', `Bearer ${bad}`)
+      .expect(401);
+  });
+
+  it('locks out after repeated failed logins', async () => {
+    const email = 'lockout-target@quantia.test';
+    for (let i = 0; i < 5; i += 1) {
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({ email, password: 'WrongPass1!' })
+        .expect(401);
+    }
+
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ email, password: 'WrongPass1!' })
+      .expect(429);
+  });
+
+  it('returns 403 when coordinator lists users (admin-only)', async () => {
+    const tokens = await login('coord@quantia.test', passwords.coord);
+    await request(app.getHttpServer())
+      .get('/api/v1/users')
+      .set('Authorization', `Bearer ${tokens.accessToken}`)
+      .expect(403);
   });
 });

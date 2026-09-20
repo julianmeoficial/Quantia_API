@@ -72,6 +72,9 @@ export class TokensService {
 
     const accessToken = await this.jwtService.signAsync(payload, {
       secret: this.configService.get('JWT_ACCESS_SECRET', { infer: true }),
+      algorithm: 'HS256',
+      issuer: this.configService.get('JWT_ISSUER', { infer: true }),
+      audience: this.configService.get('JWT_AUDIENCE', { infer: true }),
       expiresIn: accessTtl as `${number}${'s' | 'm' | 'h' | 'd'}`,
     });
 

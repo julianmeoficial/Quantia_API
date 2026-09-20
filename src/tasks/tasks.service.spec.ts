@@ -49,6 +49,7 @@ describe('TasksService', () => {
         coordinatorId: 'coord-id',
       }),
       assertUserIsProjectMember: jest.fn().mockResolvedValue(undefined),
+      assertCanMutateOwnedResource: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<ProjectAccessService>;
 
     service = new TasksService(

@@ -10,6 +10,8 @@ export default (): EnvConfig => ({
   JWT_ACCESS_TTL: process.env.JWT_ACCESS_TTL ?? '15m',
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET ?? '',
   JWT_REFRESH_TTL: process.env.JWT_REFRESH_TTL ?? '7d',
+  JWT_ISSUER: process.env.JWT_ISSUER ?? 'quantia-api',
+  JWT_AUDIENCE: process.env.JWT_AUDIENCE ?? 'quantia-clients',
 
   CORS_ORIGINS:
     process.env.CORS_ORIGINS ?? 'http://localhost:3000,http://127.0.0.1:3000',
