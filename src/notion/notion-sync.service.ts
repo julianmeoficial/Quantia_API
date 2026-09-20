@@ -7,8 +7,8 @@ import {
   SyncEventStatus,
   SyncStatus,
 } from '@prisma/client';
-import * as argon2 from 'argon2';
 import { randomBytes } from 'crypto';
+import { hashPassword } from '../auth/password.util';
 import { PrismaService } from '../database/prisma.service';
 import type { EnvConfig } from '../config/env.schema';
 import { RealtimeEmitter } from '../realtime/realtime-emitter.service';
@@ -241,7 +241,7 @@ export class NotionSyncService {
       return;
     }
 
-    const passwordHash = await argon2.hash(randomBytes(24).toString('hex'));
+    const passwordHash = await hashPassword(randomBytes(24).toString('hex'));
     const created = await this.prisma.user.create({
       data: {
         email,

@@ -9,7 +9,9 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { RoleName } from '@quantia/contracts';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Roles } from '../common/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../common/interfaces/jwt-payload.interface';
 import { BudgetService } from './budget.service';
 import {
@@ -34,6 +36,7 @@ export class BudgetController {
   }
 
   @Post()
+  @Roles(RoleName.ADMINISTRADOR, RoleName.COORDINADOR)
   createBudget(
     @CurrentUser() user: AuthenticatedUser,
     @Param('projectId', ParseUUIDPipe) projectId: string,
@@ -43,6 +46,7 @@ export class BudgetController {
   }
 
   @Patch()
+  @Roles(RoleName.ADMINISTRADOR, RoleName.COORDINADOR)
   updateBudget(
     @CurrentUser() user: AuthenticatedUser,
     @Param('projectId', ParseUUIDPipe) projectId: string,
@@ -52,6 +56,7 @@ export class BudgetController {
   }
 
   @Post('executions')
+  @Roles(RoleName.ADMINISTRADOR, RoleName.COORDINADOR)
   createExecution(
     @CurrentUser() user: AuthenticatedUser,
     @Param('projectId', ParseUUIDPipe) projectId: string,

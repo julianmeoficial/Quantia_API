@@ -108,6 +108,28 @@ describe('ProjectAccessService', () => {
     });
   });
 
+  it('assertCanMutateOwnedResource allows owner without manage', async () => {
+    await expect(
+      service.assertCanMutateOwnedResource(res, 'p1', 'r'),
+    ).resolves.toBeUndefined();
+    expect(prisma.project.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('assertCanMutateOwnedResource falls back to manage for non-owner', async () => {
+    prisma.project.findUnique.mockResolvedValue({
+      id: 'p1',
+      coordinatorId: 'c',
+    });
+    prisma.projectMember.findUnique.mockResolvedValue({
+      projectId: 'p1',
+      userId: 'r',
+    });
+
+    await expect(
+      service.assertCanMutateOwnedResource(res, 'p1', 'other'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it('assertUserIsProjectMember allows coordinator', async () => {
     prisma.project.findUnique.mockResolvedValue({ coordinatorId: 'c' });
     await expect(

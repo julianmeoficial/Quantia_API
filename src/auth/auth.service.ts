@@ -1,27 +1,45 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { RoleName } from '@quantia/contracts';
-import * as argon2 from 'argon2';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/auth.dto';
+import { LoginLockoutService } from './login-lockout.service';
+import { hashPassword, verifyPassword } from './password.util';
 import { IssuedTokens, TokensService } from './tokens.service';
 
 @Injectable()
 export class AuthService {
+  /** Precomputed dummy hash so missing-user paths take similar time to verify. */
+  private readonly dummyHashPromise: Promise<string>;
+
   constructor(
     private readonly usersService: UsersService,
     private readonly tokensService: TokensService,
-  ) {}
+    private readonly loginLockout: LoginLockoutService,
+  ) {
+    this.dummyHashPromise = hashPassword('quantia-dummy-password-not-used');
+  }
 
-  async login(dto: LoginDto): Promise<IssuedTokens & { tokenType: 'Bearer' }> {
+  async login(
+    dto: LoginDto,
+    clientIp: string,
+  ): Promise<IssuedTokens & { tokenType: 'Bearer' }> {
+    const ip = clientIp.trim() || 'unknown';
+    await this.loginLockout.assertNotLocked(dto.email, ip);
+
     const user = await this.usersService.findEntityByEmail(dto.email);
     if (!user || !user.isActive) {
+      await verifyPassword(await this.dummyHashPromise, dto.password);
+      await this.loginLockout.recordFailure(dto.email, ip);
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const valid = await argon2.verify(user.passwordHash, dto.password);
+    const valid = await verifyPassword(user.passwordHash, dto.password);
     if (!valid) {
+      await this.loginLockout.recordFailure(dto.email, ip);
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    await this.loginLockout.clear(dto.email, ip);
 
     const roles: RoleName[] = user.userRoles.map((ur) => ur.role.name);
     const tokens = await this.tokensService.issueTokens({

@@ -45,7 +45,7 @@ Plantilla: [`.env.example`](../../.env.example). **Nunca** commits de secretos.
 | `DATABASE_URL` | Transaction pooler `:6543` + `pgbouncer=true` |
 | `DIRECT_URL` | **Staging policy (ENG-156):** Session pooler `:5432` on `*.pooler.supabase.com`. Direct `db.*:5432` solo si hay IPv6 real; no es requisito en trial. |
 | `REDIS_URL` | Plugin Railway (`redis://` o `rediss://`) |
-| `JWT_*` | Secretos **nuevos** (no reutilizar local) |
+| `JWT_*` | Secretos **nuevos** (no reutilizar local). Incluye `JWT_ISSUER` / `JWT_AUDIENCE` (defaults `quantia-api` / `quantia-clients`) |
 | `CORS_ORIGINS` | Dominio front cuando exista + localhost si hace falta |
 | `CORS_VERCEL_PREVIEW` | `true` en staging |
 | `NODE_OPTIONS` | `--max-old-space-size=350` (trial 0.5 GB) |

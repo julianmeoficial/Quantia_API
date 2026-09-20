@@ -117,6 +117,11 @@ export class ProgressService {
     if (!existing || existing.projectId !== projectId) {
       throw new NotFoundException('Progress entry not found');
     }
+    await this.projectAccess.assertCanMutateOwnedResource(
+      user,
+      projectId,
+      existing.authorId,
+    );
 
     if (dto.taskId) {
       const task = await this.progressRepository.findTaskInProject(
@@ -151,6 +156,11 @@ export class ProgressService {
     if (!existing || existing.projectId !== projectId) {
       throw new NotFoundException('Progress entry not found');
     }
+    await this.projectAccess.assertCanMutateOwnedResource(
+      user,
+      projectId,
+      existing.authorId,
+    );
     await this.progressRepository.delete(progressId);
   }
 

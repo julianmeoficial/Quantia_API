@@ -111,6 +111,11 @@ export class TasksService {
     if (!existing || existing.projectId !== projectId) {
       throw new NotFoundException('Task not found');
     }
+    await this.projectAccess.assertCanMutateOwnedResource(
+      user,
+      projectId,
+      existing.assigneeId,
+    );
 
     if (dto.assigneeId) {
       await this.projectAccess.assertUserIsProjectMember(
@@ -148,6 +153,11 @@ export class TasksService {
     if (!existing || existing.projectId !== projectId) {
       throw new NotFoundException('Task not found');
     }
+    await this.projectAccess.assertCanMutateOwnedResource(
+      user,
+      projectId,
+      existing.assigneeId,
+    );
     await this.tasksRepository.delete(taskId);
   }
 

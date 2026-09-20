@@ -89,6 +89,21 @@ export class ProjectAccessService {
     );
   }
 
+  /**
+   * Owner of the resource (author / assignee) or project manager may mutate.
+   * Pass `null`/`undefined` ownerId when the resource has no owner — only managers.
+   */
+  async assertCanMutateOwnedResource(
+    user: AuthenticatedUser,
+    projectId: string,
+    ownerId: string | null | undefined,
+  ): Promise<void> {
+    if (ownerId && ownerId === user.id) {
+      return;
+    }
+    await this.assertCanManageProject(user, projectId);
+  }
+
   async assertUserIsProjectMember(
     projectId: string,
     userId: string,

@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { RoleName } from '@quantia/contracts';
 import { SyncEntityType } from '@prisma/client';
-import * as argon2 from 'argon2';
+import { hashPassword } from '../auth/password.util';
 import { NotionSyncEnqueueService } from '../notion/notion-sync-enqueue.service';
 import { UserResponseDto } from './dto/user-response.dto';
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
@@ -24,7 +24,7 @@ export class UsersService {
       throw new ConflictException('Email already registered');
     }
 
-    const passwordHash = await argon2.hash(dto.password);
+    const passwordHash = await hashPassword(dto.password);
     const user = await this.usersRepository.create({
       email: dto.email,
       passwordHash,
@@ -93,7 +93,7 @@ export class UsersService {
     }
 
     const passwordHash = dto.password
-      ? await argon2.hash(dto.password)
+      ? await hashPassword(dto.password)
       : undefined;
 
     const user = await this.usersRepository.update(id, {

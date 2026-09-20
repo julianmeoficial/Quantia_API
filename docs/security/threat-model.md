@@ -8,7 +8,7 @@
 | Framework | OWASP API Security Top 10 (2023) + OWASP ASVS L1–L2 |
 | Method | STRIDE per trust boundary; severity = impact × likelihood |
 | Owner | Julián Espitia |
-| Status | Draft for PR review — controls planned in S2–S5 (not implemented in S1) |
+| Status | S1 complete; S2 controls implemented for T-01…T-05 (authz part of T-10/T-13) |
 | Inputs | [`inventory.md`](../architecture/inventory.md), [`handoff-security.md`](../architecture/handoff-security.md), OpenAPI [`openapi/openapi.json`](../../openapi/openapi.json) |
 
 **Scope:** functionally frozen API (F7). S1 documents what is exposed and where each high-severity threat is mitigated. No hardening code in this phase.
@@ -193,19 +193,19 @@ Owner for all rows: **Julián**. Phases map to Linear children of ENG-117.
 
 | ID | Threat | STRIDE | Actor | Asset | Impact | Likelihood | Severity | Planned control | Phase | Linear | OWASP |
 |----|--------|--------|-------|-------|--------|------------|----------|-----------------|-------|--------|-------|
-| T-01 | BOLA: Investigador A reads/writes project B by id | E / I | Investigador | A-04, A-05, projects | High | High | **High** | Object-level membership filter on every id query; e2e cross-user 403 | S2 | [ENG-128](https://linear.app/brevku/issue/ENG-128) | API1 |
-| T-02 | BFLA: researcher hits admin `/users` or coordinator-only writes | E | Investigador | A-13 | High | Medium | **High** | `RolesGuard` deny-by-default; role tests → 403 | S2 | ENG-128 | API5 |
-| T-03 | Broken auth: forged/expired JWT, `alg: none`, refresh reuse | S / E | Anonymous | A-02, A-03 | High | Medium | **High** | HS256 + claim validation; rotating refresh + family revoke; logout persists revoke | S2 | ENG-128 | API2 |
-| T-04 | Login brute force / user enumeration | S / D / I | Anonymous | A-01 | High | High | **High** | Progressive lockout per account+IP; generic errors; throttling | S2 + S5 | ENG-128, [ENG-131](https://linear.app/brevku/issue/ENG-131) | API2, API4 |
-| T-05 | WebSocket join without valid JWT or without membership | S / E | Anonymous / Investigador | A-05 rooms | High | Medium | **High** | Handshake JWT + membership before `socket.join` | S2 | ENG-128 | API1, API2 |
+| T-01 | BOLA: Investigador A reads/writes project B by id | E / I | Investigador | A-04, A-05, projects | High | High | **High** | Object-level membership filter on every id query; e2e cross-user 403 | S2 **done** | [ENG-128](https://linear.app/brevku/issue/ENG-128) | API1 |
+| T-02 | BFLA: researcher hits admin `/users` or coordinator-only writes | E | Investigador | A-13 | High | Medium | **High** | `RolesGuard` deny-by-default; role tests → 403; author-or-manager on task/progress mutate | S2 **done** | ENG-128 | API5 |
+| T-03 | Broken auth: forged/expired JWT, `alg: none`, refresh reuse | S / E | Anonymous | A-02, A-03 | High | Medium | **High** | HS256 + iss/aud validation; rotating refresh + family revoke; logout persists revoke | S2 **done** | ENG-128 | API2 |
+| T-04 | Login brute force / user enumeration | S / D / I | Anonymous | A-01 | High | High | **High** | Progressive lockout per account+IP (S2); generic errors; global throttling (S5) | S2 **lockout done** + S5 | ENG-128, [ENG-131](https://linear.app/brevku/issue/ENG-131) | API2, API4 |
+| T-05 | WebSocket join without valid JWT or without membership | S / E | Anonymous / Investigador | A-05 rooms | High | Medium | **High** | Handshake JWT (HS256+iss/aud) + membership before `socket.join`; CORS via adapter allowlist | S2 **done** | ENG-128 | API1, API2 |
 | T-06 | Spoof Notion webhook (missing/invalid signature) | S / T | Anonymous | A-08, sync | High | Medium | **High** | HMAC verify, constant-time compare, reject unsigned events | S4 | [ENG-130](https://linear.app/brevku/issue/ENG-130) | API10 |
 | T-07 | Replay / out-of-window Notion webhook events | T / D | Anonymous | sync DB | Medium | Medium | **Medium** | Timestamp window + idempotency / dedupe; audit | S4 | ENG-130 | API10 |
 | T-08 | Leak of Notion `verification_token` via logs or response misuse | I | Ops / Anonymous | A-08 | High | Medium | **High** | Stop plaintext log after handshake; redact; rotate secret; store only in env | S4 | ENG-130 | API8 |
 | T-09 | Leak of `NOTION_TOKEN` / `service_role` / JWT secrets (repo, image, logs) | I | Ops / Insider | A-03, A-07, A-09 | High | Medium | **High** | Secrets only in Railway env; gitleaks CI; no secrets in image; Pino redaction | S4 | ENG-130 | API8 |
-| T-10 | Cross-project / cross-seedbed document download | E / I | Investigador | A-05, A-14 | High | Medium | **High** | Membership check + private buckets + short-lived signed URLs only | S2 + S3 | ENG-128, [ENG-129](https://linear.app/brevku/issue/ENG-129) | API1, API3 |
+| T-10 | Cross-project / cross-seedbed document download | E / I | Investigador | A-05, A-14 | High | Medium | **High** | Membership check (S2 **authz done**) + private buckets + short-lived signed URLs (S3) | S2 + S3 | ENG-128, [ENG-129](https://linear.app/brevku/issue/ENG-129) | API1, API3 |
 | T-11 | Upload abuse: spoofed MIME, oversized file, path traversal filename | T / D | Investigador | A-05, host | High | Medium | **High** | Content MIME allowlist, size cap, UUID rename, multer limits | S3 | ENG-129 | API3, API4 |
 | T-12 | Mass assignment / property-level overexposure on write or read | T / I | Authenticated | A-13, entities | High | Medium | **High** | ValidationPipe whitelist; response DTOs; never raw entities / Notion ids / hashes | S3 | ENG-129 | API3 |
-| T-13 | Tamper budget amounts or skip financial role checks | T / E | Investigador | A-04 | High | Medium | **High** | Service-level role rules + audit; no Notion replica | S2 + S3 | ENG-128, ENG-129 | API1, API6 |
+| T-13 | Tamper budget amounts or skip financial role checks | T / E | Investigador | A-04 | High | Medium | **High** | Service-level role rules + `@Roles` on writes (S2 **authz done**) + audit; no Notion replica | S2 + S3 | ENG-128, ENG-129 | API1, API6 |
 | T-14 | Unbounded resource use: pagination, report spam, WS flood | D | Authenticated | Hobby plan, A-06 | High | High | **High** | Redis `ThrottlerModule`; pageSize max; report quotas; WS event/connection limits | S5 | ENG-131 | API4 |
 | T-15 | Security misconfiguration: no helmet/HSTS, tech headers, weak CORS | I / S | Anonymous | platform | Medium | High | **High** | `helmet()`, disable `X-Powered-By`, strict CORS allowlist + Vercel preview pattern | S4 | ENG-130 | API8 |
 | T-16 | Swagger / inventory exposure in wrong environment | I | Anonymous | API surface | Medium | Low | **Medium** | Swagger off in production; OpenAPI committed for pentest only | S4 + S5 | ENG-130, ENG-131 | API9 |

@@ -31,6 +31,9 @@ export class WsAuthService {
     try {
       payload = await this.jwt.verifyAsync<JwtPayload>(token, {
         secret: this.config.get('JWT_ACCESS_SECRET', { infer: true }),
+        algorithms: ['HS256'],
+        issuer: this.config.get('JWT_ISSUER', { infer: true }),
+        audience: this.config.get('JWT_AUDIENCE', { infer: true }),
       });
     } catch {
       throw new UnauthorizedException('Invalid Socket.io auth token');

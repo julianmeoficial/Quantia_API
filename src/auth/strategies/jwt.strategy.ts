@@ -9,6 +9,7 @@ import {
 } from '../../common/interfaces/jwt-payload.interface';
 import { EnvConfig } from '../../config/env.schema';
 import { UsersService } from '../../users/users.service';
+import { buildAccessVerifyOptions, JWT_ACCESS_ALGORITHM } from '../jwt-options';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -16,10 +17,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     configService: ConfigService<EnvConfig, true>,
     private readonly usersService: UsersService,
   ) {
+    const verify = buildAccessVerifyOptions(configService);
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get('JWT_ACCESS_SECRET', { infer: true }),
+      secretOrKey: verify.secret as string,
+      algorithms: [JWT_ACCESS_ALGORITHM],
+      issuer: verify.issuer as string,
+      audience: verify.audience as string,
     });
   }
 

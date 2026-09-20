@@ -53,6 +53,7 @@ describe('ProgressService', () => {
         id: 'proj-1',
         coordinatorId: 'coord-id',
       }),
+      assertCanMutateOwnedResource: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<ProjectAccessService>;
 
     service = new ProgressService(

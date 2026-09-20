@@ -1,14 +1,14 @@
-# Quantia API — Authentication (F1)
+# Quantia API — Authentication (F1 + S2)
 
-Covers **RF-01**, **RF-02**, **RF-03** ([ENG-119](https://linear.app/brevku/issue/ENG-119)).
+Covers **RF-01**, **RF-02**, **RF-03** ([ENG-119](https://linear.app/brevku/issue/ENG-119)) and security hardening **S2** ([ENG-128](https://linear.app/brevku/issue/ENG-128)).
 
 ## Roles
 
 | Role | Code | Typical access |
 |------|------|----------------|
-| Investigador | `INVESTIGADOR` | Own profile (`GET /users/me`) |
-| Coordinador | `COORDINADOR` | Own profile (domain access in F2+) |
-| Administrador | `ADMINISTRADOR` | User CRUD + own profile |
+| Investigador | `INVESTIGADOR` | Own profile (`GET /users/me`); project membership scoped |
+| Coordinador | `COORDINADOR` | Portfolio create/manage; budget writes |
+| Administrador | `ADMINISTRADOR` | User CRUD + cross-project |
 
 Roles are seeded in migration `20260917000000_auth_users_roles`.
 
@@ -22,7 +22,7 @@ sequenceDiagram
   participant DB as Postgres
 
   Client->>Auth: POST /auth/login
-  Auth->>Svc: verify argon2
+  Auth->>Svc: lockout check + argon2id verify
   Svc->>DB: insert refresh_tokens hash + familyId
   Auth-->>Client: accessToken + refreshToken
 
@@ -40,8 +40,33 @@ sequenceDiagram
   Svc->>DB: set revokedAt
 ```
 
-- **Access JWT**: Bearer header, TTL `JWT_ACCESS_TTL` (default `15m`), payload `{ sub, email, roles }`
+- **Access JWT** (HS256 only): Bearer header, TTL `JWT_ACCESS_TTL` (default `15m`)
+  - Payload body: `{ sub, email, roles }`
+  - Standard claims: `iss` (`JWT_ISSUER`, default `quantia-api`), `aud` (`JWT_AUDIENCE`, default `quantia-clients`), `exp`
+  - Verification rejects `alg: none`, wrong algorithm, wrong `iss`/`aud`, expired tokens
 - **Refresh**: opaque random string; only **SHA-256 hash** stored; rotation on each refresh; reuse of a revoked token revokes the **family**
+- **WebSocket**: same access JWT via `handshake.auth.token`; membership checked before `socket.join()`
+
+## Login hardening (S2)
+
+- Generic `Invalid credentials` for unknown user, inactive user, and bad password
+- Dummy argon2 verify on missing/inactive user (timing parity)
+- Progressive lockout in Redis keyed by normalized email + client IP:
+  - 5 failures → 60s lock
+  - 10 → 5 min
+  - 20 → 15 min
+  - Locked requests → **429** `Too many attempts`
+- Successful login clears fail/lock keys
+- Passwords hashed with **argon2id** (`memoryCost` 65536, `timeCost` 3)
+
+Global HTTP rate limiting remains **S5**.
+
+## Object-level authorization
+
+- Every `:projectId` path goes through `ProjectAccessService.assertCanAccessProject`
+- Budget writes: service `assertCanManageProject` + controller `@Roles(ADMINISTRADOR, COORDINADOR)`
+- Task update/delete: assignee **or** project manager
+- Progress update/delete: author **or** project manager
 
 ## Endpoints (`/api/v1`)
 
@@ -53,7 +78,7 @@ sequenceDiagram
 | GET | `/users/me` | JWT |
 | GET/POST/PATCH/DELETE | `/users` | JWT + `@Roles(ADMINISTRADOR)` |
 
-Passwords are hashed with **argon2**. Responses never include `passwordHash`.
+Responses never include `passwordHash`.
 
 ## Guards
 
@@ -66,14 +91,20 @@ Global (deny by default):
 
 ## Modules
 
-- [`src/auth/`](../../src/auth/) — login / refresh / logout, `TokensService`, `JwtStrategy`
+- [`src/auth/`](../../src/auth/) — login / refresh / logout, `TokensService`, `JwtStrategy`, `LoginLockoutService`
 - [`src/users/`](../../src/users/) — profile + admin CRUD
-- [`src/common/`](../../src/common/) — decorators, guards, `HttpExceptionFilter`
+- [`src/common/`](../../src/common/) — decorators, guards, `ProjectAccessService`, `HttpExceptionFilter`
 - [`packages/contracts`](../../packages/contracts/) — shared Zod/types for frontend
 
 ## Env
 
-See [`.env.example`](../../.env.example): `JWT_ACCESS_SECRET`, `JWT_ACCESS_TTL`, `JWT_REFRESH_SECRET`, `JWT_REFRESH_TTL` (secrets ≥ 32 chars).
+See [`.env.example`](../../.env.example):
+
+| Variable | Notes |
+|----------|--------|
+| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | ≥ 32 chars |
+| `JWT_ACCESS_TTL` / `JWT_REFRESH_TTL` | defaults `15m` / `7d` |
+| `JWT_ISSUER` / `JWT_AUDIENCE` | defaults `quantia-api` / `quantia-clients` |
 
 ## Local demo users
 

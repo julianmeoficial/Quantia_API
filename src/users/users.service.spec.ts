@@ -1,11 +1,11 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { RoleName } from '@quantia/contracts';
-import * as argon2 from 'argon2';
+import * as passwordUtil from '../auth/password.util';
 import { UsersRepository, UserWithRoles } from './users.repository';
 import { UsersService } from './users.service';
 
-jest.mock('argon2', () => ({
-  hash: jest.fn().mockResolvedValue('hashed-password'),
+jest.mock('../auth/password.util', () => ({
+  hashPassword: jest.fn().mockResolvedValue('hashed-password'),
 }));
 
 describe('UsersService', () => {
@@ -58,7 +58,7 @@ describe('UsersService', () => {
       roles: [RoleName.ADMINISTRADOR],
     });
 
-    expect(argon2.hash).toHaveBeenCalledWith('password123');
+    expect(passwordUtil.hashPassword).toHaveBeenCalledWith('password123');
     expect(result).toEqual({
       id: sampleUser.id,
       email: sampleUser.email,
@@ -83,12 +83,10 @@ describe('UsersService', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
-  it('throws NotFound when updating missing user', async () => {
+  it('throws NotFoundException when updating missing user', async () => {
     (repository.findById as jest.Mock).mockResolvedValue(null);
     await expect(
-      service.update('11111111-1111-1111-1111-111111111111', {
-        fullName: 'Nope',
-      }),
+      service.update('missing', { fullName: 'X' }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

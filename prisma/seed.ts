@@ -12,6 +12,14 @@ import {
 } from '@prisma/client';
 import * as argon2 from 'argon2';
 
+// Seed uses argon2id explicitly (same baseline as API password.util).
+const ARGON2_OPTS = {
+  type: argon2.argon2id,
+  memoryCost: 65536,
+  timeCost: 3,
+  parallelism: 1,
+} as const;
+
 const prisma = new PrismaClient();
 
 const DOCUMENTS_BUCKET =
@@ -53,7 +61,7 @@ async function main(): Promise<void> {
     const role = await prisma.role.findUniqueOrThrow({
       where: { name: entry.role },
     });
-    const passwordHash = await argon2.hash(entry.password);
+    const passwordHash = await argon2.hash(entry.password, ARGON2_OPTS);
     const user = await prisma.user.upsert({
       where: { email: entry.email },
       update: {

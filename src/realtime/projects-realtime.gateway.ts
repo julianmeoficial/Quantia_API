@@ -19,7 +19,7 @@ import { WsAuthService } from './ws-auth.service';
 
 @WebSocketGateway({
   namespace: RealtimeNamespace.PROJECTS,
-  cors: { origin: true, credentials: true },
+  // CORS owned by RedisIoAdapter (CORS_ORIGINS allowlist; never origin: true).
 })
 export class ProjectsRealtimeGateway
   implements OnGatewayConnection, OnGatewayDisconnect

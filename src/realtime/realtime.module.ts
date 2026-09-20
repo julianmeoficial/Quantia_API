@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { buildAccessSignOptions } from '../auth/jwt-options';
 import type { EnvConfig } from '../config/env.schema';
 import { NotificationsRealtimeGateway } from './notifications-realtime.gateway';
 import { ProjectsRealtimeGateway } from './projects-realtime.gateway';
@@ -14,12 +15,18 @@ import { WsAuthService } from './ws-auth.service';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService<EnvConfig, true>) => ({
-        secret: config.get('JWT_ACCESS_SECRET', { infer: true }),
-        signOptions: {
-          expiresIn: config.get('JWT_ACCESS_TTL', { infer: true }),
-        },
-      }),
+      useFactory: (config: ConfigService<EnvConfig, true>) => {
+        const sign = buildAccessSignOptions(config);
+        return {
+          secret: sign.secret,
+          signOptions: {
+            algorithm: sign.algorithm,
+            issuer: sign.issuer,
+            audience: sign.audience,
+            expiresIn: sign.expiresIn,
+          },
+        };
+      },
     }),
   ],
   providers: [
