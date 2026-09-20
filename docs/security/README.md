@@ -6,6 +6,7 @@ Hardening evidence for the Quantia API after the F7 functional freeze. Phases fo
 |-----|-------|---------|
 | [`threat-model.md`](./threat-model.md) | **S1** (ENG-127) | Assets, attack surface, STRIDE, threat matrix → controls in S2–S5 |
 | [`../architecture/auth.md`](../architecture/auth.md) | **S2** (ENG-128) | JWT iss/aud, lockout, object-level authz |
+| [`data-hardening.md`](./data-hardening.md) | **S3** (ENG-129) | ValidationPipe, DTOs, uploads, error sanitization |
 
 ## Related architecture inputs
 

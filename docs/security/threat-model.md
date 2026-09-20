@@ -8,7 +8,7 @@
 | Framework | OWASP API Security Top 10 (2023) + OWASP ASVS L1–L2 |
 | Method | STRIDE per trust boundary; severity = impact × likelihood |
 | Owner | Julián Espitia |
-| Status | S1 complete; S2 controls implemented for T-01…T-05 (authz part of T-10/T-13) |
+| Status | S1–S3 controls implemented for T-01…T-05, T-11, T-12, T-17 (authz of T-10/T-13); T-04 throttling global still S5 |
 | Inputs | [`inventory.md`](../architecture/inventory.md), [`handoff-security.md`](../architecture/handoff-security.md), OpenAPI [`openapi/openapi.json`](../../openapi/openapi.json) |
 
 **Scope:** functionally frozen API (F7). S1 documents what is exposed and where each high-severity threat is mitigated. No hardening code in this phase.
@@ -202,18 +202,18 @@ Owner for all rows: **Julián**. Phases map to Linear children of ENG-117.
 | T-07 | Replay / out-of-window Notion webhook events | T / D | Anonymous | sync DB | Medium | Medium | **Medium** | Timestamp window + idempotency / dedupe; audit | S4 | ENG-130 | API10 |
 | T-08 | Leak of Notion `verification_token` via logs or response misuse | I | Ops / Anonymous | A-08 | High | Medium | **High** | Stop plaintext log after handshake; redact; rotate secret; store only in env | S4 | ENG-130 | API8 |
 | T-09 | Leak of `NOTION_TOKEN` / `service_role` / JWT secrets (repo, image, logs) | I | Ops / Insider | A-03, A-07, A-09 | High | Medium | **High** | Secrets only in Railway env; gitleaks CI; no secrets in image; Pino redaction | S4 | ENG-130 | API8 |
-| T-10 | Cross-project / cross-seedbed document download | E / I | Investigador | A-05, A-14 | High | Medium | **High** | Membership check (S2 **authz done**) + private buckets + short-lived signed URLs (S3) | S2 + S3 | ENG-128, [ENG-129](https://linear.app/brevku/issue/ENG-129) | API1, API3 |
-| T-11 | Upload abuse: spoofed MIME, oversized file, path traversal filename | T / D | Investigador | A-05, host | High | Medium | **High** | Content MIME allowlist, size cap, UUID rename, multer limits | S3 | ENG-129 | API3, API4 |
-| T-12 | Mass assignment / property-level overexposure on write or read | T / I | Authenticated | A-13, entities | High | Medium | **High** | ValidationPipe whitelist; response DTOs; never raw entities / Notion ids / hashes | S3 | ENG-129 | API3 |
-| T-13 | Tamper budget amounts or skip financial role checks | T / E | Investigador | A-04 | High | Medium | **High** | Service-level role rules + `@Roles` on writes (S2 **authz done**) + audit; no Notion replica | S2 + S3 | ENG-128, ENG-129 | API1, API6 |
+| T-10 | Cross-project / cross-seedbed document download | E / I | Investigador | A-05, A-14 | High | Medium | **High** | Membership check (S2) + private buckets + short-lived signed URLs (S3 **done**) | S2 + S3 **done** | ENG-128, [ENG-129](https://linear.app/brevku/issue/ENG-129) | API1, API3 |
+| T-11 | Upload abuse: spoofed MIME, oversized file, path traversal filename | T / D | Investigador | A-05, host | High | Medium | **High** | Content MIME allowlist, multer size cap, UUID rename, sanitized originalName | S3 **done** | ENG-129 | API3, API4 |
+| T-12 | Mass assignment / property-level overexposure on write or read | T / I | Authenticated | A-13, entities | High | Medium | **High** | ValidationPipe whitelist; response DTOs; generic report errors; keep syncStatus for UI | S3 **done** | ENG-129 | API3 |
+| T-13 | Tamper budget amounts or skip financial role checks | T / E | Investigador | A-04 | High | Medium | **High** | Service-level role rules + `@Roles` on writes (S2) + audit; no Notion replica | S2 **authz done** + S3/S5 | ENG-128, ENG-129 | API1, API6 |
 | T-14 | Unbounded resource use: pagination, report spam, WS flood | D | Authenticated | Hobby plan, A-06 | High | High | **High** | Redis `ThrottlerModule`; pageSize max; report quotas; WS event/connection limits | S5 | ENG-131 | API4 |
 | T-15 | Security misconfiguration: no helmet/HSTS, tech headers, weak CORS | I / S | Anonymous | platform | Medium | High | **High** | `helmet()`, disable `X-Powered-By`, strict CORS allowlist + Vercel preview pattern | S4 | ENG-130 | API8 |
 | T-16 | Swagger / inventory exposure in wrong environment | I | Anonymous | API surface | Medium | Low | **Medium** | Swagger off in production; OpenAPI committed for pentest only | S4 + S5 | ENG-130, ENG-131 | API9 |
-| T-17 | Error leakage: stack traces, table names, versions on 500 | I | Anonymous | schema | Medium | Medium | **Medium** | Global filter; sanitized JSON errors | S3 | ENG-129 | API8 |
-| T-18 | SQLi / ORM bypass on search/filter/sort | T / I | Authenticated | A-10 | High | Low | **Medium** | Parameterised Prisma only; ban raw SQL without bound params + comment | S3 | ENG-129 | — (injection) |
+| T-17 | Error leakage: stack traces, table names, versions on 500 | I | Anonymous | schema | Medium | Medium | **Medium** | Global filter; Multer/Prisma mapped; sanitized JSON errors | S3 **done** | ENG-129 | API8 |
+| T-18 | SQLi / ORM bypass on search/filter/sort | T / I | Authenticated | A-10 | High | Low | **Medium** | Parameterised Prisma only; ban raw SQL without bound params + comment | S3 **compliant** | ENG-129 | — (injection) |
 | T-19 | Compromised Redis → forged sync/report jobs | S / T | Attacker w/ A-11 | A-07, A-05 | High | Low | **Medium** | Network isolation; Redis auth; no untrusted job sources | S4 | ENG-130 | API8 |
 | T-20 | Missing / incomplete audit on sensitive actions | R | Insider / attacker | A-12, A-04 | Medium | Medium | **Medium** | Immutable `audit_logs` (actor, action, resource, IP, result) | S5 | ENG-131 | API6 / RF-18 |
-| T-21 | SSRF if future URL-fetch features | T / I | Authenticated | internal net | Medium | Low | **Low** | Validate external URLs; block private ranges (control reserved) | S3 | ENG-129 | API7 |
+| T-21 | SSRF if future URL-fetch features | T / I | Authenticated | internal net | Medium | Low | **Low** | No user URL fetch today; reserved allowlist + private-range block | S3 **reserved** | ENG-129 | API7 |
 | T-22 | RLS bypass via publishable Supabase keys from browser | E / I | Anonymous | A-04–A-06 | High | Low | **Medium** | Keep RLS enabled + revoke anon/authenticated; never ship service_role to client | S4 | ENG-130 | API8 |
 
 ### Critical scenarios (explicit coverage)

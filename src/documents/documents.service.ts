@@ -21,6 +21,7 @@ import {
   DocumentResponseDto,
   ListDocumentsQueryDto,
 } from './dto/document-response.dto';
+import { sanitizeOriginalFilename } from './sanitize-original-filename';
 
 @Injectable()
 export class DocumentsService {
@@ -59,7 +60,7 @@ export class DocumentsService {
       uploadedById: user.id,
       storageBucket: bucket,
       storageKey,
-      originalName: file.originalname || 'upload',
+      originalName: sanitizeOriginalFilename(file.originalname),
       mimeType,
       sizeBytes: file.buffer.length,
       status: DocumentStatus.UPLOADED,
