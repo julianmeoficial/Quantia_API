@@ -265,10 +265,7 @@ describe('Security S2 BOLA/BFLA (e2e)', () => {
           .emit(
             'join',
             { projectId: projectBId },
-            (
-              err: Error | null,
-              response: { ok: boolean; error?: string },
-            ) => {
+            (err: Error | null, response: { ok: boolean; error?: string }) => {
               clearTimeout(timer);
               if (err) {
                 reject(err instanceof Error ? err : new Error(String(err)));

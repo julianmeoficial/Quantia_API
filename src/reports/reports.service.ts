@@ -103,7 +103,10 @@ export class ReportsService {
       requestedById: report.requestedById,
       kind: report.kind,
       status: report.status,
-      errorMessage: report.errorMessage,
+      errorMessage:
+        report.status === ReportStatus.FAILED
+          ? 'Report generation failed'
+          : null,
       downloadUrl,
       expiresInSeconds,
       createdAt: report.createdAt.toISOString(),

@@ -32,8 +32,9 @@ coord/admin escribe presupuesto y borra documentos / lanza reportes.
 ## Storage
 
 - Buckets privados: `quantia-documents`, `quantia-reports` (configurables).
-- Upload: rename UUID, max **25 MiB**, MIME por **magic bytes** (PDF, PNG, JPEG, XLSX).
+- Upload: rename UUID, max **25 MiB** (multer `limits.fileSize` + MimeGuard), MIME por **magic bytes** (PDF, PNG, JPEG, XLSX); `originalName` sanitizado (`basename`, sin path traversal).
 - Download: signed URL TTL **300s**. Nunca se exponen `storageKey` ni la service role.
+- Detalle S3: [`docs/security/data-hardening.md`](../security/data-hardening.md).
 - En CI/tests: `StorageService` se mockea / `InMemoryStorageService` — no se llama a Supabase real.
 
 Variables: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,

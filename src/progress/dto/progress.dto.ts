@@ -35,7 +35,10 @@ export class CreateProgressDto {
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(20)
-  @IsUrl({}, { each: true })
+  @IsUrl(
+    { protocols: ['http', 'https'], require_protocol: true },
+    { each: true },
+  )
   evidenceLinks?: string[];
 
   @ApiPropertyOptional({ format: 'date-time' })
@@ -68,7 +71,10 @@ export class UpdateProgressDto {
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(20)
-  @IsUrl({}, { each: true })
+  @IsUrl(
+    { protocols: ['http', 'https'], require_protocol: true },
+    { each: true },
+  )
   evidenceLinks?: string[];
 
   @ApiPropertyOptional({ format: 'date-time' })
