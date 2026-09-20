@@ -262,14 +262,21 @@ describe('Security S2 BOLA/BFLA (e2e)', () => {
         const timer = setTimeout(() => reject(new Error('join timeout')), 5000);
         socket
           .timeout(4000)
-          .emit('join', { projectId: projectBId }, (err, response) => {
-            clearTimeout(timer);
-            if (err) {
-              reject(err instanceof Error ? err : new Error(String(err)));
-              return;
-            }
-            resolve(response as { ok: boolean; error?: string });
-          });
+          .emit(
+            'join',
+            { projectId: projectBId },
+            (
+              err: Error | null,
+              response: { ok: boolean; error?: string },
+            ) => {
+              clearTimeout(timer);
+              if (err) {
+                reject(err instanceof Error ? err : new Error(String(err)));
+                return;
+              }
+              resolve(response);
+            },
+          );
       },
     );
 
