@@ -17,6 +17,7 @@ Linear: [ENG-126](https://linear.app/brevku/issue/ENG-126/f7-estabilizacion-y-ha
 | OpenAPI (committed) | [`openapi/openapi.json`](../../openapi/openapi.json) |
 | Bruno collection | [`bruno/`](../../bruno/) |
 | Inventory | [`inventory.md`](./inventory.md) |
+| S1 threat model | [`../security/threat-model.md`](../security/threat-model.md) (ENG-127) |
 
 Swagger UI is **not** mounted when `NODE_ENV=production` (staging). Import OpenAPI into Burp/ZAP or use Bruno.
 

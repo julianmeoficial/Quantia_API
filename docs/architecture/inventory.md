@@ -3,7 +3,7 @@
 Threat-modelling input. Keep this file updated when routes, events or jobs change.
 After F7: **functional freeze** — only security fixes and defects.
 
-Related: [`handoff-security.md`](./handoff-security.md) · OpenAPI [`openapi/openapi.json`](../../openapi/openapi.json) · Bruno [`bruno/`](../../bruno/).
+Related: [`handoff-security.md`](./handoff-security.md) · S1 threat model [`../security/threat-model.md`](../security/threat-model.md) · OpenAPI [`openapi/openapi.json`](../../openapi/openapi.json) · Bruno [`bruno/`](../../bruno/).
 
 ## REST — `/api/v1`
 
