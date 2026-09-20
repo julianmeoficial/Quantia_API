@@ -58,7 +58,7 @@ Notion **no** puede llamar a `localhost`. La suscripción del webhook necesita u
    secret” aparte tras verificar.
 4. Redeploy `Quantia_API` + `worker` tras setear el secret.
 5. Borrar cualquier suscripción/túnel viejo (incluida `api-production-18cd…`).
-6. Smoke: editar en sandbox → fila `sync_events` `SYNCED`.
+6. Smoke (**ENG-159 Done**, 2026-09-20): editar fila sandbox Projects/Tasks/Progress → `sync_events.status = SYNCED` (evidencia en [`deploy-validation.md`](./deploy-validation.md)).
 
 ### Túnel local (solo si no hay staging)
 

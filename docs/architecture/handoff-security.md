@@ -12,7 +12,7 @@ Linear: [ENG-126](https://linear.app/brevku/issue/ENG-126/f7-estabilizacion-y-ha
 | Health | `GET /api/v1/health` |
 | Notion webhook | `POST /api/v1/webhooks/notion` (suscripción nueva 2026-09-19; secret = verification_token) |
 | Deploy | merge → `main` auto-deploy; legacy `api` (`api-production-18cd…`) deprecar |
-| Postgres | Supabase (pooler `:6543` app; session pooler `:5432` as `DIRECT_URL` workaround) |
+| Postgres | Supabase: Transaction pooler `:6543` (`DATABASE_URL`); **Session pooler** `:5432` (`DIRECT_URL`, política staging ENG-156) |
 | Redis | Railway plugin |
 | OpenAPI (committed) | [`openapi/openapi.json`](../../openapi/openapi.json) |
 | Bruno collection | [`bruno/`](../../bruno/) |
@@ -76,7 +76,7 @@ curl -sS -X POST https://quantiaapi-production.up.railway.app/api/v1/auth/login 
   -d '{"email":"admin@quantia.local","password":"AdminPass1!"}'
 ```
 
-Manual: Notion sandbox edit → `sync_events` `SYNCED` (if webhook subscription verified).
+Manual: Notion sandbox edit → `sync_events` `SYNCED` — **proven 2026-09-20** (ENG-159; see [`deploy-validation.md`](./deploy-validation.md)).
 
 ## Technical debt (Linear)
 
@@ -84,10 +84,10 @@ Classified under ENG-126:
 
 | Class | Issue |
 |-------|--------|
-| Blocking | [ENG-156](https://linear.app/brevku/issue/ENG-156) Supabase Direct IPv6 — Session pooler workaround |
+| ~~Blocking~~ **Done** | [ENG-156](https://linear.app/brevku/issue/ENG-156) Session pooler = política staging `DIRECT_URL` |
 | ~~Blocking~~ **Done** | [ENG-157](https://linear.app/brevku/issue/ENG-157) GitHub connect — servicio `Quantia_API` + vars |
-| Non-blocking | [ENG-158](https://linear.app/brevku/issue/ENG-158) Migrate `railway.toml` → IaC |
-| Non-blocking | [ENG-159](https://linear.app/brevku/issue/ENG-159) Manual Notion `SYNCED` smoke |
+| ~~Non-blocking~~ **Done** | [ENG-158](https://linear.app/brevku/issue/ENG-158) Migrate `railway.toml` → `.railway/railway.ts` IaC |
+| ~~Non-blocking~~ **Done** | [ENG-159](https://linear.app/brevku/issue/ENG-159) Manual Notion `SYNCED` smoke |
 
 Swagger UI is off when `NODE_ENV=production` (staging); use `openapi/openapi.json` / Bruno instead.
 

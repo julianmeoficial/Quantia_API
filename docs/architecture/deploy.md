@@ -18,7 +18,7 @@ proyecto aparte (`quantia-production`) con JWT/DB/Redis propios cuando pase a Ho
 
 Deploy automático: merge a `main` → Railway construye `Quantia_API`. No hace falta `railway up` para la API.
 
-Misma imagen runner para API y worker; solo cambia el start command ([`railway.toml`](../../railway.toml)).
+Misma imagen runner para API y worker; start commands viven en [`.railway/railway.ts`](../../.railway/railway.ts) (IaC, ENG-158).
 
 ```mermaid
 flowchart LR
@@ -26,7 +26,7 @@ flowchart LR
   NotionWH["Notion webhook HTTPS"] --> QuantiaAPI
   Vercel["Vercel front / previews"] -->|"HTTPS + WSS"| QuantiaAPI
   QuantiaAPI --> Pooler["Supabase pooler 6543"]
-  Migrate["migrate one-shot"] --> Direct["Supabase 5432"]
+  Migrate["migrate one-shot"] --> SessionPooler["Supabase Session pooler 5432"]
   QuantiaAPI --> Redis[(Railway Redis)]
   Worker["Railway worker"] --> Redis
   Worker --> Pooler
@@ -43,7 +43,7 @@ Plantilla: [`.env.example`](../../.env.example). **Nunca** commits de secretos.
 | `NODE_ENV` | `production` |
 | `PORT` | Lo inyecta Railway |
 | `DATABASE_URL` | Transaction pooler `:6543` + `pgbouncer=true` |
-| `DIRECT_URL` | Direct `:5432` si hay IPv6; si no, **Session pooler** `:5432` (workaround staging) |
+| `DIRECT_URL` | **Staging policy (ENG-156):** Session pooler `:5432` on `*.pooler.supabase.com`. Direct `db.*:5432` solo si hay IPv6 real; no es requisito en trial. |
 | `REDIS_URL` | Plugin Railway (`redis://` o `rediss://`) |
 | `JWT_*` | Secretos **nuevos** (no reutilizar local) |
 | `CORS_ORIGINS` | Dominio front cuando exista + localhost si hace falta |

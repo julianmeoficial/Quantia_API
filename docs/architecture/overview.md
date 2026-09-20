@@ -117,7 +117,7 @@ Modules by phase:
 | F3 ✓ | `src/notion/`, jobs in worker | Bidirectional Notion ↔ Postgres sync |
 | F4 ✓ | `src/realtime/` | Socket.io gateway (`/projects`, `/notifications`), Redis adapter + bridge |
 | F5 ✓ | `src/budget/`, `src/documents/`, `src/reports/`, `src/storage/`, `src/audit/` | Financial execution (Postgres only), Storage, PDF/Excel |
-| F6 ✓ | `railway.toml`, logger (`nestjs-pino`), `docs/architecture/deploy.md` | Railway staging, JSON logs + requestId, Notion HTTPS |
+| F6 ✓ | `.railway/railway.ts` (IaC), logger (`nestjs-pino`), `docs/architecture/deploy.md` | Railway staging, JSON logs + requestId, Notion HTTPS |
 | F7 ✓ | `openapi/`, `bruno/`, seed F5, RLS, `inventory.md` / `handoff-security.md` | Handoff to Security (ENG-126); functional freeze |
 
 ---
