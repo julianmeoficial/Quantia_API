@@ -2,6 +2,7 @@ import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { createCorsOriginDelegate, parseCorsOrigins } from './common/cors.util';
@@ -19,8 +20,21 @@ async function bootstrap(): Promise<void> {
   const httpAdapter = app.getHttpAdapter();
   const instance = httpAdapter.getInstance() as {
     set?: (key: string, value: unknown) => void;
+    disable?: (key: string) => void;
   };
   instance.set?.('trust proxy', 1);
+  instance.disable?.('x-powered-by');
+
+  // S4 / ENG-130: security headers. CSP disabled — this is a JSON API, not HTML.
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      hsts: {
+        maxAge: 15_552_000,
+        includeSubDomains: true,
+      },
+    }),
+  );
 
   app.setGlobalPrefix('api');
   app.enableVersioning({
@@ -53,6 +67,9 @@ async function bootstrap(): Promise<void> {
   await redisIoAdapter.connectToRedis();
   app.useWebSocketAdapter(redisIoAdapter);
 
+  // Swagger UI only for local/dev/test (NODE_ENV !== production).
+  // Staging and production both run NODE_ENV=production (APP_ENV separates them);
+  // use committed openapi/openapi.json for pentest tooling.
   if (nodeEnv !== 'production') {
     const swaggerConfig = new DocumentBuilder()
       .setTitle('Quantia API')

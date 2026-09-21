@@ -16,6 +16,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import { Public } from '../common/decorators/public.decorator';
 import type { EnvConfig } from '../config/env.schema';
 import { NotionSyncEnqueueService } from './notion-sync-enqueue.service';
+import { NotionWebhookReplayService } from './notion-webhook-replay.service';
 import { SyncEntityType } from '@prisma/client';
 
 @ApiTags('webhooks')
@@ -26,6 +27,7 @@ export class NotionWebhookController {
   constructor(
     private readonly enqueue: NotionSyncEnqueueService,
     private readonly config: ConfigService<EnvConfig, true>,
+    private readonly replay: NotionWebhookReplayService,
   ) {}
 
   @Public()
@@ -37,14 +39,17 @@ export class NotionWebhookController {
     @Req() req: { rawBody?: Buffer },
   ): Promise<{ ok: true } | { verification_token: string }> {
     if (typeof body.verification_token === 'string') {
-      // Temporary visibility for Notion subscription handshake (paste into Notion UI).
-      this.logger.warn(
-        `Notion webhook verification_token (paste in Notion UI): ${body.verification_token}`,
-      );
+      // Handshake: return token in body for Notion UI; never log the value (T-08).
+      this.logger.log('Notion webhook verification handshake received');
       return { verification_token: body.verification_token };
     }
 
     this.assertSignature(signature, req.rawBody, body);
+    // signature is defined after assertSignature
+    const sig = signature as string;
+
+    this.assertTimestampInWindow(body);
+    await this.assertNotReplay(sig);
 
     const notionPageId = this.extractPageId(body);
     if (!notionPageId) {
@@ -83,6 +88,35 @@ export class NotionWebhookController {
     const b = Buffer.from(expected);
     if (a.length !== b.length || !timingSafeEqual(a, b)) {
       throw new UnauthorizedException('Invalid Notion signature');
+    }
+  }
+
+  private assertTimestampInWindow(body: Record<string, unknown>): void {
+    const skew = this.config.get('NOTION_WEBHOOK_MAX_SKEW_SECONDS', {
+      infer: true,
+    });
+    if (typeof body.timestamp !== 'string') {
+      throw new UnauthorizedException('Webhook timestamp missing or invalid');
+    }
+    const eventMs = Date.parse(body.timestamp);
+    if (Number.isNaN(eventMs)) {
+      throw new UnauthorizedException('Webhook timestamp missing or invalid');
+    }
+    const deltaSec = Math.abs(Date.now() - eventMs) / 1000;
+    if (deltaSec > skew) {
+      throw new UnauthorizedException(
+        'Webhook timestamp outside allowed window',
+      );
+    }
+  }
+
+  private async assertNotReplay(signature: string): Promise<void> {
+    const skew = this.config.get('NOTION_WEBHOOK_MAX_SKEW_SECONDS', {
+      infer: true,
+    });
+    const claimed = await this.replay.claim(signature, skew);
+    if (!claimed) {
+      throw new UnauthorizedException('Webhook replay rejected');
     }
   }
 

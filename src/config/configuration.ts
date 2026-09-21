@@ -2,6 +2,7 @@ import { EnvConfig } from './env.schema';
 
 export default (): EnvConfig => ({
   NODE_ENV: process.env.NODE_ENV as EnvConfig['NODE_ENV'],
+  APP_ENV: (process.env.APP_ENV as EnvConfig['APP_ENV']) ?? 'development',
   PORT: Number(process.env.PORT),
   DATABASE_URL: process.env.DATABASE_URL ?? '',
   DIRECT_URL: process.env.DIRECT_URL ?? '',
@@ -24,6 +25,9 @@ export default (): EnvConfig => ({
   NOTION_VERSION: process.env.NOTION_VERSION ?? '2025-09-03',
   NOTION_RATE_LIMIT_RPS: Number(process.env.NOTION_RATE_LIMIT_RPS ?? 3),
   NOTION_SYNC_MAX_ATTEMPTS: Number(process.env.NOTION_SYNC_MAX_ATTEMPTS ?? 5),
+  NOTION_WEBHOOK_MAX_SKEW_SECONDS: Number(
+    process.env.NOTION_WEBHOOK_MAX_SKEW_SECONDS ?? 300,
+  ),
 
   NOTION_SANDBOX_PAGE_ID: process.env.NOTION_SANDBOX_PAGE_ID ?? '',
   NOTION_DB_USERS: process.env.NOTION_DB_USERS ?? '',

@@ -7,6 +7,7 @@ on:
 
 env:
   NODE_ENV: test
+  APP_ENV: test
   PORT: 3000
   DATABASE_URL: postgresql://quantia:quantia@localhost:5432/quantia
   DIRECT_URL: postgresql://quantia:quantia@localhost:5432/quantia
@@ -22,6 +23,7 @@ env:
   NOTION_VERSION: 2025-09-03
   NOTION_RATE_LIMIT_RPS: 3
   NOTION_SYNC_MAX_ATTEMPTS: 5
+  NOTION_WEBHOOK_MAX_SKEW_SECONDS: 300
   NOTION_SANDBOX_PAGE_ID: 3df8b2d8-659c-808d-890f-d25b0213aacd
   NOTION_DB_USERS: 182336f1-ce31-4495-bd88-f168bf3aa3bc
   NOTION_DS_USERS: 6a429964-8f61-43c9-952d-1e68fb3e578c
@@ -42,6 +44,18 @@ env:
   STORAGE_ALLOWED_MIME: application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
 
 jobs:
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   verify:
     runs-on: ubuntu-latest
     services:
@@ -96,3 +110,12 @@ jobs:
 
       - name: Docker build
         run: docker build -t quantia-api:ci .
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: quantia-api:ci
+          format: table
+          exit-code: '1'
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
