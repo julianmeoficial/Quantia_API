@@ -3,6 +3,7 @@ import {
   ValidationPipe,
   VersioningType,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   RoleName,
@@ -13,6 +14,7 @@ import * as argon2 from 'argon2';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
+import { LoginLockoutService } from '../src/auth/login-lockout.service';
 import { PrismaService } from '../src/database/prisma.service';
 import { NotionSyncEnqueueService } from '../src/notion/notion-sync-enqueue.service';
 
@@ -233,7 +235,6 @@ describe('Auth & Users (e2e)', () => {
   });
 
   it('rejects access tokens with wrong audience', async () => {
-    const { JwtService } = await import('@nestjs/jwt');
     const jwt = new JwtService();
     const bad = await jwt.signAsync(
       {
@@ -258,6 +259,12 @@ describe('Auth & Users (e2e)', () => {
 
   it('locks out after repeated failed logins', async () => {
     const email = 'lockout-target@quantia.test';
+    // Clear residual Redis lock/fail keys from prior suite runs (TTL up to 15m).
+    const lockout = app.get(LoginLockoutService);
+    for (const ip of ['::ffff:127.0.0.1', '127.0.0.1', '::1', 'unknown']) {
+      await lockout.clear(email, ip);
+    }
+
     for (let i = 0; i < 5; i += 1) {
       await request(app.getHttpServer())
         .post('/api/v1/auth/login')
