@@ -3,6 +3,7 @@ import { validateEnv } from './env.schema';
 describe('validateEnv', () => {
   const validEnv = {
     NODE_ENV: 'test',
+    APP_ENV: 'test',
     PORT: '3000',
     DATABASE_URL: 'postgresql://quantia:quantia@localhost:5432/quantia',
     DIRECT_URL: 'postgresql://quantia:quantia@localhost:5432/quantia',
@@ -18,6 +19,7 @@ describe('validateEnv', () => {
     NOTION_VERSION: '2025-09-03',
     NOTION_RATE_LIMIT_RPS: '3',
     NOTION_SYNC_MAX_ATTEMPTS: '5',
+    NOTION_WEBHOOK_MAX_SKEW_SECONDS: '300',
     NOTION_SANDBOX_PAGE_ID: '3df8b2d8-659c-808d-890f-d25b0213aacd',
     NOTION_DB_USERS: '182336f1-ce31-4495-bd88-f168bf3aa3bc',
     NOTION_DS_USERS: '6a429964-8f61-43c9-952d-1e68fb3e578c',
@@ -37,8 +39,10 @@ describe('validateEnv', () => {
     const result = validateEnv(validEnv);
     expect(result.PORT).toBe(3000);
     expect(result.NODE_ENV).toBe('test');
+    expect(result.APP_ENV).toBe('test');
     expect(result.JWT_ACCESS_TTL).toBe('15m');
     expect(result.NOTION_RATE_LIMIT_RPS).toBe(3);
+    expect(result.NOTION_WEBHOOK_MAX_SKEW_SECONDS).toBe(300);
   });
 
   it('rejects missing DATABASE_URL', () => {
@@ -86,5 +90,25 @@ describe('validateEnv', () => {
       validateEnv({ ...validEnv, CORS_VERCEL_PREVIEW: 'false' })
         .CORS_VERCEL_PREVIEW,
     ).toBe(false);
+  });
+
+  it('allows CORS_VERCEL_PREVIEW on staging', () => {
+    expect(
+      validateEnv({
+        ...validEnv,
+        APP_ENV: 'staging',
+        CORS_VERCEL_PREVIEW: 'true',
+      }).CORS_VERCEL_PREVIEW,
+    ).toBe(true);
+  });
+
+  it('rejects CORS_VERCEL_PREVIEW when APP_ENV=production', () => {
+    expect(() =>
+      validateEnv({
+        ...validEnv,
+        APP_ENV: 'production',
+        CORS_VERCEL_PREVIEW: 'true',
+      }),
+    ).toThrow('Environment validation failed');
   });
 });

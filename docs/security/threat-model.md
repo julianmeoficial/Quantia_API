@@ -198,23 +198,23 @@ Owner for all rows: **Julián**. Phases map to Linear children of ENG-117.
 | T-03 | Broken auth: forged/expired JWT, `alg: none`, refresh reuse | S / E | Anonymous | A-02, A-03 | High | Medium | **High** | HS256 + iss/aud validation; rotating refresh + family revoke; logout persists revoke | S2 **done** | ENG-128 | API2 |
 | T-04 | Login brute force / user enumeration | S / D / I | Anonymous | A-01 | High | High | **High** | Progressive lockout per account+IP (S2); generic errors; global throttling (S5) | S2 **lockout done** + S5 | ENG-128, [ENG-131](https://linear.app/brevku/issue/ENG-131) | API2, API4 |
 | T-05 | WebSocket join without valid JWT or without membership | S / E | Anonymous / Investigador | A-05 rooms | High | Medium | **High** | Handshake JWT (HS256+iss/aud) + membership before `socket.join`; CORS via adapter allowlist | S2 **done** | ENG-128 | API1, API2 |
-| T-06 | Spoof Notion webhook (missing/invalid signature) | S / T | Anonymous | A-08, sync | High | Medium | **High** | HMAC verify, constant-time compare, reject unsigned events | S4 | [ENG-130](https://linear.app/brevku/issue/ENG-130) | API10 |
-| T-07 | Replay / out-of-window Notion webhook events | T / D | Anonymous | sync DB | Medium | Medium | **Medium** | Timestamp window + idempotency / dedupe; audit | S4 | ENG-130 | API10 |
-| T-08 | Leak of Notion `verification_token` via logs or response misuse | I | Ops / Anonymous | A-08 | High | Medium | **High** | Stop plaintext log after handshake; redact; rotate secret; store only in env | S4 | ENG-130 | API8 |
-| T-09 | Leak of `NOTION_TOKEN` / `service_role` / JWT secrets (repo, image, logs) | I | Ops / Insider | A-03, A-07, A-09 | High | Medium | **High** | Secrets only in Railway env; gitleaks CI; no secrets in image; Pino redaction | S4 | ENG-130 | API8 |
+| T-06 | Spoof Notion webhook (missing/invalid signature) | S / T | Anonymous | A-08, sync | High | Medium | **High** | HMAC verify, constant-time compare, reject unsigned events | S4 **done** | [ENG-130](https://linear.app/brevku/issue/ENG-130) | API10 |
+| T-07 | Replay / out-of-window Notion webhook events | T / D | Anonymous | sync DB | Medium | Medium | **Medium** | Timestamp window + Redis SET NX replay dedupe | S4 **done** | ENG-130 | API10 |
+| T-08 | Leak of Notion `verification_token` via logs or response misuse | I | Ops / Anonymous | A-08 | High | Medium | **High** | No plaintext handshake log; Pino redact; rotate secret; env only | S4 **done** | ENG-130 | API8 |
+| T-09 | Leak of `NOTION_TOKEN` / `service_role` / JWT secrets (repo, image, logs) | I | Ops / Insider | A-03, A-07, A-09 | High | Medium | **High** | Secrets only in Railway env; gitleaks CI; no secrets in image; Pino redaction | S4 **done** | ENG-130 | API8 |
 | T-10 | Cross-project / cross-seedbed document download | E / I | Investigador | A-05, A-14 | High | Medium | **High** | Membership check (S2) + private buckets + short-lived signed URLs (S3 **done**) | S2 + S3 **done** | ENG-128, [ENG-129](https://linear.app/brevku/issue/ENG-129) | API1, API3 |
 | T-11 | Upload abuse: spoofed MIME, oversized file, path traversal filename | T / D | Investigador | A-05, host | High | Medium | **High** | Content MIME allowlist, multer size cap, UUID rename, sanitized originalName | S3 **done** | ENG-129 | API3, API4 |
 | T-12 | Mass assignment / property-level overexposure on write or read | T / I | Authenticated | A-13, entities | High | Medium | **High** | ValidationPipe whitelist; response DTOs; generic report errors; keep syncStatus for UI | S3 **done** | ENG-129 | API3 |
 | T-13 | Tamper budget amounts or skip financial role checks | T / E | Investigador | A-04 | High | Medium | **High** | Service-level role rules + `@Roles` on writes (S2) + audit; no Notion replica | S2 **authz done** + S3/S5 | ENG-128, ENG-129 | API1, API6 |
 | T-14 | Unbounded resource use: pagination, report spam, WS flood | D | Authenticated | Hobby plan, A-06 | High | High | **High** | Redis `ThrottlerModule`; pageSize max; report quotas; WS event/connection limits | S5 | ENG-131 | API4 |
-| T-15 | Security misconfiguration: no helmet/HSTS, tech headers, weak CORS | I / S | Anonymous | platform | Medium | High | **High** | `helmet()`, disable `X-Powered-By`, strict CORS allowlist + Vercel preview pattern | S4 | ENG-130 | API8 |
-| T-16 | Swagger / inventory exposure in wrong environment | I | Anonymous | API surface | Medium | Low | **Medium** | Swagger off in production; OpenAPI committed for pentest only | S4 + S5 | ENG-130, ENG-131 | API9 |
+| T-15 | Security misconfiguration: no helmet/HSTS, tech headers, weak CORS | I / S | Anonymous | platform | Medium | High | **High** | `helmet()`, disable `X-Powered-By`, strict CORS allowlist + Vercel preview pattern | S4 **done** | ENG-130 | API8 |
+| T-16 | Swagger / inventory exposure in wrong environment | I | Anonymous | API surface | Medium | Low | **Medium** | Swagger off when `NODE_ENV=production`; OpenAPI committed for pentest | S4 **done** (+ S5 inventory) | ENG-130, ENG-131 | API9 |
 | T-17 | Error leakage: stack traces, table names, versions on 500 | I | Anonymous | schema | Medium | Medium | **Medium** | Global filter; Multer/Prisma mapped; sanitized JSON errors | S3 **done** | ENG-129 | API8 |
 | T-18 | SQLi / ORM bypass on search/filter/sort | T / I | Authenticated | A-10 | High | Low | **Medium** | Parameterised Prisma only; ban raw SQL without bound params + comment | S3 **compliant** | ENG-129 | — (injection) |
-| T-19 | Compromised Redis → forged sync/report jobs | S / T | Attacker w/ A-11 | A-07, A-05 | High | Low | **Medium** | Network isolation; Redis auth; no untrusted job sources | S4 | ENG-130 | API8 |
+| T-19 | Compromised Redis → forged sync/report jobs | S / T | Attacker w/ A-11 | A-07, A-05 | High | Low | **Medium** | Network isolation; Redis auth; no untrusted job sources | S4 **documented** | ENG-130 | API8 |
 | T-20 | Missing / incomplete audit on sensitive actions | R | Insider / attacker | A-12, A-04 | Medium | Medium | **Medium** | Immutable `audit_logs` (actor, action, resource, IP, result) | S5 | ENG-131 | API6 / RF-18 |
 | T-21 | SSRF if future URL-fetch features | T / I | Authenticated | internal net | Medium | Low | **Low** | No user URL fetch today; reserved allowlist + private-range block | S3 **reserved** | ENG-129 | API7 |
-| T-22 | RLS bypass via publishable Supabase keys from browser | E / I | Anonymous | A-04–A-06 | High | Low | **Medium** | Keep RLS enabled + revoke anon/authenticated; never ship service_role to client | S4 | ENG-130 | API8 |
+| T-22 | RLS bypass via publishable Supabase keys from browser | E / I | Anonymous | A-04–A-06 | High | Low | **Medium** | Keep RLS enabled + revoke anon/authenticated; never ship service_role to client | S4 **done** (RLS F7 + docs) | ENG-130 | API8 |
 
 ### Critical scenarios (explicit coverage)
 
@@ -233,7 +233,7 @@ Owner for all rows: **Julián**. Phases map to Linear children of ENG-117.
 |-------|--------|----------------------------|---------------------------|
 | S2 Identity | ENG-128 | T-01, T-02, T-03, T-04*, T-05, T-10*, T-13* | AuthN/Z + object checks |
 | S3 Data | ENG-129 | T-10*, T-11, T-12, T-13*, T-17, T-18, T-21 | DTOs, uploads, errors |
-| S4 Infra / secrets | ENG-130 | T-06, T-07, T-08, T-09, T-15, T-16*, T-19, T-22 | Webhook, helmet, secrets, container |
+| S4 Infra / secrets | ENG-130 | T-06, T-07, T-08, T-09, T-15, T-16*, T-19, T-22 | Webhook, helmet, secrets, container — see [`infra-hardening.md`](./infra-hardening.md) |
 | S5 Resilience | ENG-131 | T-04*, T-14, T-16*, T-20 | Rate limit, audit, WS quotas |
 | S6 Verification | [ENG-132](https://linear.app/brevku/issue/ENG-132) | — (verifies all) | SAST/SCA/ASVS; not a new control owner |
 

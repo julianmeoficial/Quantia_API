@@ -49,8 +49,9 @@ Notion **no** puede llamar a `localhost`. La suscripción del webhook necesita u
 **Checklist al crear / cambiar suscripción:**
 
 1. URL pública HTTPS de la API (arriba).
-2. Notion envía un POST único con `verification_token` (sin firma). La API lo
-   loguea y responde 200. Pégalo en el diálogo **Verify** de Notion.
+2. Notion envía un POST único con `verification_token` (sin firma). La API responde
+   200 con el token en el cuerpo (para pegarlo en **Verify**). El valor **no** se
+   escribe en logs (S4 / T-08).
 3. Ese **mismo** `verification_token` es la clave HMAC de todos los eventos
    posteriores (`X-Notion-Signature`). Guardarlo como `NOTION_WEBHOOK_SECRET`
    en `.env` y en Railway (`Quantia_API` + `worker`). **No** es el Access Token de la
@@ -82,3 +83,6 @@ URL de ejemplo: `https://<subdominio>.trycloudflare.com/api/v1/webhooks/notion`.
 - Integration token and webhook secret only via env; never in responses or browser.
 - No Notion calls inside HTTP handlers except the webhook (which only enqueues).
 - `notion_page_id` is never returned in domain response DTOs.
+- Webhook (S4 / ENG-130): HMAC + `timingSafeEqual`; `timestamp` within
+  `NOTION_WEBHOOK_MAX_SKEW_SECONDS`; Redis anti-replay on signature hash; handshake
+  token never logged. Details: [`../security/infra-hardening.md`](../security/infra-hardening.md).

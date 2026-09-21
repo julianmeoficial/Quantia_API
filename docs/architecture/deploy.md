@@ -41,15 +41,19 @@ Plantilla: [`.env.example`](../../.env.example). **Nunca** commits de secretos.
 | Variable | Notas staging |
 |----------|----------------|
 | `NODE_ENV` | `production` |
+| `APP_ENV` | `staging` (production futura: `production`; prohíbe `CORS_VERCEL_PREVIEW=true`) |
 | `PORT` | Lo inyecta Railway |
 | `DATABASE_URL` | Transaction pooler `:6543` + `pgbouncer=true` |
 | `DIRECT_URL` | **Staging policy (ENG-156):** Session pooler `:5432` on `*.pooler.supabase.com`. Direct `db.*:5432` solo si hay IPv6 real; no es requisito en trial. |
 | `REDIS_URL` | Plugin Railway (`redis://` o `rediss://`) |
 | `JWT_*` | Secretos **nuevos** (no reutilizar local). Incluye `JWT_ISSUER` / `JWT_AUDIENCE` (defaults `quantia-api` / `quantia-clients`) |
 | `CORS_ORIGINS` | Dominio front cuando exista + localhost si hace falta |
-| `CORS_VERCEL_PREVIEW` | `true` en staging |
+| `CORS_VERCEL_PREVIEW` | `true` en staging; **false** en production |
+| `NOTION_WEBHOOK_MAX_SKEW_SECONDS` | Default `300` (ventana + TTL anti-replay Redis) |
 | `NODE_OPTIONS` | `--max-old-space-size=350` (trial 0.5 GB) |
 | `NOTION_*` / `SUPABASE_*` | `NOTION_WEBHOOK_SECRET` = `verification_token` del handshake |
+
+Seguridad infra (helmet, gitleaks, trivy, rotación): [`../security/infra-hardening.md`](../security/infra-hardening.md).
 
 Detalle smoke + URL pública: [`deploy-validation.md`](./deploy-validation.md).
 
@@ -79,7 +83,8 @@ Staging actual:
 `https://quantiaapi-production.up.railway.app/api/v1/webhooks/notion`
 
 1. Crear/actualizar suscripción en Notion con esa URL.
-2. Pegar el `verification_token` (logs de la API) en **Verify**.
+2. Pegar el `verification_token` de la **respuesta HTTP** del handshake en **Verify**
+   (la API ya no lo imprime en logs — S4).
 3. Guardar ese **mismo** token como `NOTION_WEBHOOK_SECRET` (`Quantia_API` + `worker`) y redeploy.
    No hay un “Webhook secret” aparte; no usar el Access Token de la integración.
 4. Eliminar suscripciones/túneles viejos (incluida cualquier URL `api-production-18cd…`).

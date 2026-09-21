@@ -1,4 +1,5 @@
 process.env.NODE_ENV ??= 'test';
+process.env.APP_ENV ??= 'test';
 process.env.PORT ??= '3000';
 process.env.DATABASE_URL ??=
   'postgresql://quantia:quantia@localhost:5433/quantia';
@@ -19,6 +20,7 @@ process.env.NOTION_WEBHOOK_SECRET ??= 'whsec_test_webhook_secret_for_e2e';
 process.env.NOTION_VERSION ??= '2025-09-03';
 process.env.NOTION_RATE_LIMIT_RPS ??= '3';
 process.env.NOTION_SYNC_MAX_ATTEMPTS ??= '5';
+process.env.NOTION_WEBHOOK_MAX_SKEW_SECONDS ??= '300';
 process.env.NOTION_SANDBOX_PAGE_ID ??= '3df8b2d8-659c-808d-890f-d25b0213aacd';
 process.env.NOTION_DB_USERS ??= '182336f1-ce31-4495-bd88-f168bf3aa3bc';
 process.env.NOTION_DS_USERS ??= '6a429964-8f61-43c9-952d-1e68fb3e578c';
