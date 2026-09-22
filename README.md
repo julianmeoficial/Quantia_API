@@ -101,6 +101,7 @@ Detalle de pertenencia y filtros: [`docs/architecture/domain.md`](docs/architect
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run test` | Tests unitarios |
 | `npm run test:e2e` | Tests e2e (requiere Postgres + Redis) |
+| `npm run audit:ci` | SCA: falla en vulns high/critical de deps **directas** (ENG-132) |
 | `npm run prisma:migrate:dev` | Crear/aplicar migraciones en dev |
 | `npm run prisma:seed` | Seed demo: 4 users, Alpha/Beta, budgets F5 |
 | `npm run openapi:export` | Genera `openapi/openapi.json` (requiere DB+Redis) |
@@ -129,15 +130,28 @@ test/           E2E
 docs/           Documentación técnica
 ```
 
+## Seguridad (S1–S6 / ENG-117)
+
+Endurecimiento post-F7 (sin features nuevas): OWASP API Top 10 + ASVS L1–L2. Evidencia en [`docs/security/`](docs/security/README.md); cierre formal en [`docs/security/eng-117-closure.md`](docs/security/eng-117-closure.md). Staging + cuentas seed para pentest: [`docs/architecture/handoff-security.md`](docs/architecture/handoff-security.md).
+
+| Fase | Tema |
+|------|------|
+| S1 | Modelado de amenazas (STRIDE) |
+| S2 | AuthN / AuthZ (BOLA, BFLA) |
+| S3 | Validación, exposición, uploads |
+| S4 | Infra, secretos, contenedor |
+| S5 | Rate limit, auditoría, logs |
+| S6 | SAST / SCA / checklist ASVS |
+
 ## CI/CD
 
-GitHub Actions ejecuta en cada PR y push a `main`:
+GitHub Actions en cada PR y push a `main`:
 
-1. `npm ci`
-2. `prisma migrate deploy`
-3. lint + typecheck
-4. tests unitarios y e2e (con Postgres y Redis como services)
-5. `docker build`
+| Workflow | Qué hace |
+|----------|----------|
+| [`ci.yml`](.github/workflows/ci.yml) job `secrets` | gitleaks (historial incluido) |
+| [`ci.yml`](.github/workflows/ci.yml) job `verify` | `npm ci` → `npm run audit:ci` → migrate → lint (incl. `eslint-plugin-security`) → typecheck → unit + e2e → `docker build` → Trivy OS (CRITICAL/HIGH) |
+| [`codeql.yml`](.github/workflows/codeql.yml) | CodeQL `security-extended` + gate SARIF (sin upload GHAS) |
 
 ## Documentación
 
@@ -154,24 +168,21 @@ GitHub Actions ejecuta en cada PR y push a `main`:
 | [`docs/architecture/deploy-validation.md`](docs/architecture/deploy-validation.md) | Checklist smoke staging + URLs + hallazgo IPv6 Direct vs Session pooler |
 | [`docs/architecture/inventory.md`](docs/architecture/inventory.md) | Inventario endpoints / WS / jobs / tablas (F7) |
 | [`docs/architecture/handoff-security.md`](docs/architecture/handoff-security.md) | Handoff Seguridad: cuentas seed, OpenAPI/Bruno, RLS, freeze |
+| [`docs/security/README.md`](docs/security/README.md) | Índice S1–S6: threat model, hardening, verification, ASVS |
+| [`docs/security/eng-117-closure.md`](docs/security/eng-117-closure.md) | Cierre ENG-117: criterios de aceptación y trazabilidad |
 | [`docs/development/local-setup.md`](docs/development/local-setup.md) | Cómo correr localmente (Compose o host) |
 | [`openapi/openapi.json`](openapi/openapi.json) | OpenAPI 3 export (Burp/ZAP) |
 | [`bruno/`](bruno/) | Colección Bruno manual |
 
 ## Roadmap
 
-Desarrollo incremental F0–F7. Fase actual: [ENG-126 — F7 Estabilización y handoff a Seguridad](https://linear.app/brevku/issue/ENG-126/f7-estabilizacion-y-handoff-a-seguridad) (padre [ENG-116](https://linear.app/brevku/issue/ENG-116)). **Congelamiento funcional** tras merge F7.
+Desarrollo F0–F7 completado ([ENG-116](https://linear.app/brevku/issue/ENG-116)). Seguridad S1–S6 completada ([ENG-117](https://linear.app/brevku/issue/ENG-117/seguridad-quantia-seguridad-de-la-api-s1-s6)). **Congelamiento funcional** desde F7; solo fixes de seguridad y defectos. Siguiente hito: **Pentesting** (P0–P6, staging).
 
-| Fase | Tema |
-|------|------|
-| F0 | Bootstrap + Docker + CI |
-| F1 | Auth JWT + roles |
-| F2 | Proyectos, tareas, avances |
-| F3 | Sync Notion |
-| F4 | Socket.io tiempo real |
-| F5 | Presupuesto, documentos, reportes |
-| F6 | Observabilidad + Railway |
-| F7 | Estabilización / handoff Seguridad |
+| Fase | Tema | Linear |
+|------|------|--------|
+| F0–F7 | API funcional + handoff | ENG-116 / ENG-126 |
+| S1–S6 | Endurecimiento OWASP/ASVS | ENG-117 |
+| P0–P6 | Verificación ofensiva | (post S6) |
 
 ## Contribución
 

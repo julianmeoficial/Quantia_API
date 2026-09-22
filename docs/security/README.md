@@ -11,6 +11,7 @@ Hardening evidence for the Quantia API after the F7 functional freeze. Phases fo
 | [`resilience.md`](./resilience.md) | **S5** (ENG-131) | Throttling Redis, quotas, WS limits, audit immutability, 401/403 alerts |
 | [`verification.md`](./verification.md) | **S6** (ENG-132) | SCA/SAST/gitleaks/Trivy/CodeQL gates + Dependabot |
 | [`asvs-checklist.md`](./asvs-checklist.md) | **S6** (ENG-132) | OWASP ASVS L1–L2 (API) evidence map |
+| [`eng-117-closure.md`](./eng-117-closure.md) | **Checkout** | ENG-117 acceptance matrix, PR traceability, deferred debt |
 
 ## Related architecture inputs
 
@@ -28,5 +29,6 @@ Hardening evidence for the Quantia API after the F7 functional freeze. Phases fo
 | `Security_S4` | ENG-130 | Secrets, infra, container, webhook |
 | `Security_S5` | ENG-131 | Rate limit, audit, logs |
 | `Security_S6` | ENG-132 | SAST / SCA / ASVS checklist |
+| `Secuirty_Checkout` | ENG-117 | Final verification + doc sync (no new domain scope) |
 
 Cursor rules: `.cursor/rules/security-hardening.md` (S1–S6), `.cursor/rules/pentesting.md` (P0–P6 after S6).

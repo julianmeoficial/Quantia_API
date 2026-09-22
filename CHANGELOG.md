@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Security S1–S6 (ENG-117):** threat model STRIDE ([`docs/security/threat-model.md`](docs/security/threat-model.md), PR [#11](https://github.com/julianmeoficial/Quantia_API/pull/11)); S2 auth hardening ([`auth.md`](docs/architecture/auth.md), [#12](https://github.com/julianmeoficial/Quantia_API/pull/12)); S3 data ([`data-hardening.md`](docs/security/data-hardening.md), [#14](https://github.com/julianmeoficial/Quantia_API/pull/14)); S4 infra ([`infra-hardening.md`](docs/security/infra-hardening.md), [#16](https://github.com/julianmeoficial/Quantia_API/pull/16)); S5 resilience ([`resilience.md`](docs/security/resilience.md), [#17](https://github.com/julianmeoficial/Quantia_API/pull/17)); S6 verification — `audit:ci`, Dependabot, ESLint security, CodeQL SARIF gate, ASVS checklist ([#18](https://github.com/julianmeoficial/Quantia_API/pull/18)).
+- **ENG-117 closure checkout:** [`docs/security/eng-117-closure.md`](docs/security/eng-117-closure.md) (acceptance matrix, deferred debt, pentest handoff).
+
 ### Changed
 
 - **Fixes_1 / F7 debt:** Session pooler `:5432` es la política staging oficial de `DIRECT_URL` (ENG-156); smoke Notion → `sync_events` `SYNCED` documentado (ENG-159); Railway Config as Code (`railway.toml`) migrado a Infrastructure as Code [`.railway/railway.ts`](.railway/railway.ts) (ENG-158).

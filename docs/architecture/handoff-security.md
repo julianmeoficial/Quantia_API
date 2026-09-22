@@ -98,4 +98,4 @@ Do **not** add domain features after F7 merge. Track debt in Linear as blocking 
 
 ## S6 EXIT → pentest P0
 
-Hardening phases S1–S6 are complete when CI gates in [`../security/verification.md`](../security/verification.md) are green and the ASVS checklist is filled. Use the seed accounts above plus OpenAPI/Bruno as P0 inputs; test **staging only**.
+Hardening phases S1–S6 are complete when CI gates in [`../security/verification.md`](../security/verification.md) are green and the ASVS checklist is filled. Formal program closure: [`../security/eng-117-closure.md`](../security/eng-117-closure.md). Use the seed accounts above plus OpenAPI/Bruno as P0 inputs; test **staging only**.
