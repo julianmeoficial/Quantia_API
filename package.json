@@ -67,7 +67,7 @@
     "class-validator": "^0.15.1",
     "exceljs": "^4.4.0",
     "helmet": "^8.3.0",
-    "ioredis": "^5.7.0",
+    "ioredis": "^6.0.0",
     "nestjs-pino": "^5.2.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
