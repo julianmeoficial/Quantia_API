@@ -1,4 +1,6 @@
 # CodeQL — S6 / ENG-132 (SAST every PR)
+# Upload to GitHub Security tab requires code scanning / GHAS on private repos.
+# We always analyze + gate on SARIF findings so CI still blocks without GHAS.
 name: CodeQL
 
 on:
@@ -40,3 +42,8 @@ jobs:
         uses: github/codeql-action/analyze@v3
         with:
           category: '/language:${{ matrix.language }}'
+          upload: never
+          output: ${{ runner.temp }}/codeql-sarif
+
+      - name: Gate on CodeQL SARIF findings
+        run: node scripts/codeql-sarif-gate.mjs "${{ runner.temp }}/codeql-sarif"

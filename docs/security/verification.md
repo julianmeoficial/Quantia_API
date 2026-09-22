@@ -26,7 +26,7 @@ Transitive moderate findings remain visible via `npm audit` / Dependabot PRs but
 | npm audit (direct) | [`scripts/audit-direct.mjs`](../../scripts/audit-direct.mjs) + CI step |
 | Dependabot | [`.github/dependabot.yml`](../../.github/dependabot.yml) (npm + github-actions, weekly) |
 | ESLint security | [`eslint.config.mjs`](../../eslint.config.mjs) |
-| CodeQL | [`.github/workflows/codeql.yml`](../../.github/workflows/codeql.yml) |
+| CodeQL | [`.github/workflows/codeql.yml`](../../.github/workflows/codeql.yml) — analyze + SARIF gate (`upload: never` until GHAS/code scanning is enabled on the private repo) |
 | Security e2e | `test/security-s2.e2e-spec.ts` … `test/security-s5.e2e-spec.ts` |
 
 ## Overrides (SCA)
