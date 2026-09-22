@@ -108,6 +108,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: SCA — direct dependency audit
+        run: npm run audit:ci
+
       - name: Apply migrations
         run: npx prisma migrate deploy
 

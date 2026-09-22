@@ -9,6 +9,8 @@ Hardening evidence for the Quantia API after the F7 functional freeze. Phases fo
 | [`data-hardening.md`](./data-hardening.md) | **S3** (ENG-129) | ValidationPipe, DTOs, uploads, error sanitization |
 | [`infra-hardening.md`](./infra-hardening.md) | **S4** (ENG-130) | Secrets, helmet, APP_ENV, webhook window/replay, gitleaks/trivy |
 | [`resilience.md`](./resilience.md) | **S5** (ENG-131) | Throttling Redis, quotas, WS limits, audit immutability, 401/403 alerts |
+| [`verification.md`](./verification.md) | **S6** (ENG-132) | SCA/SAST/gitleaks/Trivy/CodeQL gates + Dependabot |
+| [`asvs-checklist.md`](./asvs-checklist.md) | **S6** (ENG-132) | OWASP ASVS L1–L2 (API) evidence map |
 
 ## Related architecture inputs
 

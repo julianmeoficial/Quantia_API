@@ -11,6 +11,10 @@
   "workspaces": [
     "packages/*"
   ],
+  "overrides": {
+    "multer": "2.4.0",
+    "deepmerge-ts": "^8.0.0"
+  },
   "scripts": {
     "build": "npm run build:contracts && nest build",
     "build:contracts": "npm run build -w @quantia/contracts",
@@ -23,6 +27,7 @@
     "worker:prod": "node dist/worker",
     "lint": "eslint \"{src,packages,test}/**/*.ts\"",
     "typecheck": "tsc --noEmit",
+    "audit:ci": "node scripts/audit-direct.mjs",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
@@ -90,6 +95,7 @@
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
+    "eslint-plugin-security": "^3.0.1",
     "file-type": "^16.5.4",
     "globals": "^17.0.0",
     "jest": "^30.0.0",
