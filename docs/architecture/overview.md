@@ -82,7 +82,7 @@ Current repository layout after F5:
 quantia-api/
 ├── .cursorrules
 ├── .cursor/rules/
-├── .github/workflows/ci.yml
+├── .github/workflows/ci.yml · codeql.yml · dependabot.yml
 ├── packages/contracts/src/
 │   ├── auth · projects · tasks · progress · realtime · notion
 │   ├── budget · documents · reports · index
@@ -100,10 +100,11 @@ quantia-api/
 │   ├── notion/ · realtime/
 │   ├── storage/ · audit/ · budget/ · documents/ · reports/   # F5
 │   └── common/
-├── test/                                 # auth · domain · notion · realtime · f5
+├── test/                                 # auth · domain · notion · realtime · f5 · security-s2…s5
 ├── docs/architecture/
 │   ├── overview · docker · auth · domain · notion · realtime
-│   └── budget-storage-reports.md
+│   └── budget-storage-reports.md · handoff-security · inventory
+├── docs/security/                        # S1–S6 evidence + eng-117-closure
 ├── Dockerfile · docker-compose.yml · .env.example
 ├── README.md · CHANGELOG.md
 ```
@@ -119,6 +120,7 @@ Modules by phase:
 | F5 ✓ | `src/budget/`, `src/documents/`, `src/reports/`, `src/storage/`, `src/audit/` | Financial execution (Postgres only), Storage, PDF/Excel |
 | F6 ✓ | `.railway/railway.ts` (IaC), logger (`nestjs-pino`), `docs/architecture/deploy.md` | Railway staging, JSON logs + requestId, Notion HTTPS |
 | F7 ✓ | `openapi/`, `bruno/`, seed F5, RLS, `inventory.md` / `handoff-security.md` | Handoff to Security (ENG-126); functional freeze |
+| S1–S6 ✓ | `docs/security/*`, security e2e, CI gates (gitleaks, audit:ci, CodeQL, Trivy OS) | Hardening complete (ENG-117); pentest P0 on staging — [`.cursor/rules/pentesting.md`](../../.cursor/rules/pentesting.md) |
 
 ---
 
