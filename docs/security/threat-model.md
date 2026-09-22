@@ -235,7 +235,7 @@ Owner for all rows: **Julián**. Phases map to Linear children of ENG-117.
 | S3 Data | ENG-129 | T-10*, T-11, T-12, T-13*, T-17, T-18, T-21 | DTOs, uploads, errors |
 | S4 Infra / secrets | ENG-130 | T-06, T-07, T-08, T-09, T-15, T-16*, T-19, T-22 | Webhook, helmet, secrets, container — see [`infra-hardening.md`](./infra-hardening.md) |
 | S5 Resilience | ENG-131 | T-04*, T-14, T-16*, T-20 | Rate limit, audit, WS quotas |
-| S6 Verification | [ENG-132](https://linear.app/brevku/issue/ENG-132) | — (verifies all) | SAST/SCA/ASVS; not a new control owner |
+| S6 Verification | [ENG-132](https://linear.app/brevku/issue/ENG-132) | — (verifies all) | **Done** — see [`verification.md`](./verification.md) + [`asvs-checklist.md`](./asvs-checklist.md) |
 
 \*Shared ownership across phases.
 

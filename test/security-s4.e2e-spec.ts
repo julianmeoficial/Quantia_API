@@ -42,7 +42,7 @@ describe('Security S4 infra hardening (e2e)', () => {
     http.disable?.('x-powered-by');
     app.use(
       helmet({
-        contentSecurityPolicy: false,
+        contentSecurityPolicy: true,
         hsts: { maxAge: 15_552_000, includeSubDomains: true },
       }),
     );
@@ -92,6 +92,7 @@ describe('Security S4 infra hardening (e2e)', () => {
     expect(res.headers['x-powered-by']).toBeUndefined();
     expect(res.headers['strict-transport-security']).toMatch(/max-age=/);
     expect(res.headers['x-content-type-options']).toBe('nosniff');
+    expect(res.headers['content-security-policy']).toBeTruthy();
   });
 
   it('rejects arbitrary CORS Origin', async () => {

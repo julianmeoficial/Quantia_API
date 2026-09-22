@@ -35,7 +35,7 @@ describe('Notion webhooks (e2e)', () => {
     http.disable?.('x-powered-by');
     app.use(
       helmet({
-        contentSecurityPolicy: false,
+        contentSecurityPolicy: true,
         hsts: { maxAge: 15_552_000, includeSubDomains: true },
       }),
     );
