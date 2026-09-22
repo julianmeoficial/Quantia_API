@@ -101,7 +101,7 @@ Evidence points to code, tests, or CI.
 |----|-------------|--------|----------|
 | V14.1.1 | Build/deploy security scanning | Done | gitleaks + Trivy OS + CodeQL |
 | V14.2.1 | Unnecessary features off in prod | Done | Swagger off when `NODE_ENV=production` |
-| V14.3.1 | Security headers | Done | helmet + HSTS (S4) |
+| V14.3.1 | Security headers | Done | helmet + HSTS + CSP (S4; CSP defaults in prod, Swagger-safe relax in non-prod) |
 | V14.5.1 | HTTP methods / debug | Done | No debug routes; X-Powered-By disabled |
 
 ## Closure

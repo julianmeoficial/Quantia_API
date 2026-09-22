@@ -65,10 +65,22 @@ async function bootstrap(): Promise<void> {
   instance.set?.('trust proxy', 1);
   instance.disable?.('x-powered-by');
 
-  // S4 / ENG-130: security headers. CSP disabled — this is a JSON API, not HTML.
+  const nodeEnv = configService.get('NODE_ENV', { infer: true });
+
+  // S4 / ENG-130: security headers. Default CSP on; local/dev relaxes script/style
+  // for Swagger UI only (Swagger is off when NODE_ENV=production).
   app.use(
     helmet({
-      contentSecurityPolicy: false,
+      contentSecurityPolicy:
+        nodeEnv === 'production'
+          ? true
+          : {
+              useDefaults: true,
+              directives: {
+                scriptSrc: ["'self'", "'unsafe-inline'"],
+                styleSrc: ["'self'", "'unsafe-inline'"],
+              },
+            },
       hsts: {
         maxAge: 15_552_000,
         includeSubDomains: true,
@@ -89,7 +101,6 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  const nodeEnv = configService.get('NODE_ENV', { infer: true });
   const corsOrigins = parseCorsOrigins(
     configService.get('CORS_ORIGINS', { infer: true }),
   );

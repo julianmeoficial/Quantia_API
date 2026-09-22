@@ -64,7 +64,7 @@ Notion does **not** re-expose the token after verify. To rotate:
 
 [`src/main.ts`](../../src/main.ts):
 
-- `helmet()` with HSTS (`maxAge` 15552000, includeSubDomains); CSP off (JSON API)
+- `helmet()` with HSTS (`maxAge` 15552000, includeSubDomains); CSP on (Helmet defaults in production; local/dev relaxes `script-src`/`style-src` for Swagger UI)
 - Express `disable('x-powered-by')`
 - CORS allowlist via [`cors.util.ts`](../../src/common/cors.util.ts); never `*`
 - `CORS_VERCEL_PREVIEW` allowed on staging only; **rejected at boot** when `APP_ENV=production`
