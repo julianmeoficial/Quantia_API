@@ -54,8 +54,12 @@ export class RedisIoAdapter extends IoAdapter {
   }
 
   createIOServer(port: number, options?: Partial<ServerOptions>): Server {
+    const config = this.app.get(ConfigService<EnvConfig, true>);
+    const idleMs = config.get('WS_IDLE_TIMEOUT_MS', { infer: true });
     const server = super.createIOServer(port, {
       ...options,
+      pingInterval: Math.min(25_000, Math.floor(idleMs / 2)),
+      pingTimeout: idleMs,
       cors: {
         origin: this.corsOrigin,
         credentials: true,
@@ -68,7 +72,11 @@ export class RedisIoAdapter extends IoAdapter {
   }
 
   async close(): Promise<void> {
-    await Promise.all([this.pubClient?.quit(), this.subClient?.quit()]);
+    try {
+      await Promise.all([this.pubClient?.quit(), this.subClient?.quit()]);
+    } catch {
+      // Already closed during Nest app teardown.
+    }
     this.pubClient = null;
     this.subClient = null;
   }

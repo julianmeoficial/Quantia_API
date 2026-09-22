@@ -8,7 +8,7 @@
 | Framework | OWASP API Security Top 10 (2023) + OWASP ASVS L1–L2 |
 | Method | STRIDE per trust boundary; severity = impact × likelihood |
 | Owner | Julián Espitia |
-| Status | S1–S3 controls implemented for T-01…T-05, T-11, T-12, T-17 (authz of T-10/T-13); T-04 throttling global still S5 |
+| Status | S1–S5 controls for T-01…T-05, T-11, T-12, T-14, T-17, T-20 (authz of T-10/T-13); T-04 throttling complete in S5 |
 | Inputs | [`inventory.md`](../architecture/inventory.md), [`handoff-security.md`](../architecture/handoff-security.md), OpenAPI [`openapi/openapi.json`](../../openapi/openapi.json) |
 
 **Scope:** functionally frozen API (F7). S1 documents what is exposed and where each high-severity threat is mitigated. No hardening code in this phase.
@@ -196,7 +196,7 @@ Owner for all rows: **Julián**. Phases map to Linear children of ENG-117.
 | T-01 | BOLA: Investigador A reads/writes project B by id | E / I | Investigador | A-04, A-05, projects | High | High | **High** | Object-level membership filter on every id query; e2e cross-user 403 | S2 **done** | [ENG-128](https://linear.app/brevku/issue/ENG-128) | API1 |
 | T-02 | BFLA: researcher hits admin `/users` or coordinator-only writes | E | Investigador | A-13 | High | Medium | **High** | `RolesGuard` deny-by-default; role tests → 403; author-or-manager on task/progress mutate | S2 **done** | ENG-128 | API5 |
 | T-03 | Broken auth: forged/expired JWT, `alg: none`, refresh reuse | S / E | Anonymous | A-02, A-03 | High | Medium | **High** | HS256 + iss/aud validation; rotating refresh + family revoke; logout persists revoke | S2 **done** | ENG-128 | API2 |
-| T-04 | Login brute force / user enumeration | S / D / I | Anonymous | A-01 | High | High | **High** | Progressive lockout per account+IP (S2); generic errors; global throttling (S5) | S2 **lockout done** + S5 | ENG-128, [ENG-131](https://linear.app/brevku/issue/ENG-131) | API2, API4 |
+| T-04 | Login brute force / user enumeration | S / D / I | Anonymous | A-01 | High | High | **High** | Progressive lockout per account+IP (S2); generic errors; Redis auth throttler 10/60s (S5) | S2 + **S5 done** | ENG-128, [ENG-131](https://linear.app/brevku/issue/ENG-131) | API2, API4 |
 | T-05 | WebSocket join without valid JWT or without membership | S / E | Anonymous / Investigador | A-05 rooms | High | Medium | **High** | Handshake JWT (HS256+iss/aud) + membership before `socket.join`; CORS via adapter allowlist | S2 **done** | ENG-128 | API1, API2 |
 | T-06 | Spoof Notion webhook (missing/invalid signature) | S / T | Anonymous | A-08, sync | High | Medium | **High** | HMAC verify, constant-time compare, reject unsigned events | S4 **done** | [ENG-130](https://linear.app/brevku/issue/ENG-130) | API10 |
 | T-07 | Replay / out-of-window Notion webhook events | T / D | Anonymous | sync DB | Medium | Medium | **Medium** | Timestamp window + Redis SET NX replay dedupe | S4 **done** | ENG-130 | API10 |
@@ -206,13 +206,13 @@ Owner for all rows: **Julián**. Phases map to Linear children of ENG-117.
 | T-11 | Upload abuse: spoofed MIME, oversized file, path traversal filename | T / D | Investigador | A-05, host | High | Medium | **High** | Content MIME allowlist, multer size cap, UUID rename, sanitized originalName | S3 **done** | ENG-129 | API3, API4 |
 | T-12 | Mass assignment / property-level overexposure on write or read | T / I | Authenticated | A-13, entities | High | Medium | **High** | ValidationPipe whitelist; response DTOs; generic report errors; keep syncStatus for UI | S3 **done** | ENG-129 | API3 |
 | T-13 | Tamper budget amounts or skip financial role checks | T / E | Investigador | A-04 | High | Medium | **High** | Service-level role rules + `@Roles` on writes (S2) + audit; no Notion replica | S2 **authz done** + S3/S5 | ENG-128, ENG-129 | API1, API6 |
-| T-14 | Unbounded resource use: pagination, report spam, WS flood | D | Authenticated | Hobby plan, A-06 | High | High | **High** | Redis `ThrottlerModule`; pageSize max; report quotas; WS event/connection limits | S5 | ENG-131 | API4 |
+| T-14 | Unbounded resource use: pagination, report spam, WS flood | D | Authenticated | Hobby plan, A-06 | High | High | **High** | Redis `ThrottlerModule`; pageSize ≤50; body 1mb/depth 10; report 5/60s; WS conn/event/idle caps | **S5 done** | ENG-131 | API4 |
 | T-15 | Security misconfiguration: no helmet/HSTS, tech headers, weak CORS | I / S | Anonymous | platform | Medium | High | **High** | `helmet()`, disable `X-Powered-By`, strict CORS allowlist + Vercel preview pattern | S4 **done** | ENG-130 | API8 |
 | T-16 | Swagger / inventory exposure in wrong environment | I | Anonymous | API surface | Medium | Low | **Medium** | Swagger off when `NODE_ENV=production`; OpenAPI committed for pentest | S4 **done** (+ S5 inventory) | ENG-130, ENG-131 | API9 |
 | T-17 | Error leakage: stack traces, table names, versions on 500 | I | Anonymous | schema | Medium | Medium | **Medium** | Global filter; Multer/Prisma mapped; sanitized JSON errors | S3 **done** | ENG-129 | API8 |
 | T-18 | SQLi / ORM bypass on search/filter/sort | T / I | Authenticated | A-10 | High | Low | **Medium** | Parameterised Prisma only; ban raw SQL without bound params + comment | S3 **compliant** | ENG-129 | — (injection) |
 | T-19 | Compromised Redis → forged sync/report jobs | S / T | Attacker w/ A-11 | A-07, A-05 | High | Low | **Medium** | Network isolation; Redis auth; no untrusted job sources | S4 **documented** | ENG-130 | API8 |
-| T-20 | Missing / incomplete audit on sensitive actions | R | Insider / attacker | A-12, A-04 | Medium | Medium | **Medium** | Immutable `audit_logs` (actor, action, resource, IP, result) | S5 | ENG-131 | API6 / RF-18 |
+| T-20 | Missing / incomplete audit on sensitive actions | R | Insider / attacker | A-12, A-04 | Medium | Medium | **Medium** | Broad audit paths + await DENIED; sanitize metadata; PG append-only trigger | **S5 done** | ENG-131 | API6 / RF-18 |
 | T-21 | SSRF if future URL-fetch features | T / I | Authenticated | internal net | Medium | Low | **Low** | No user URL fetch today; reserved allowlist + private-range block | S3 **reserved** | ENG-129 | API7 |
 | T-22 | RLS bypass via publishable Supabase keys from browser | E / I | Anonymous | A-04–A-06 | High | Low | **Medium** | Keep RLS enabled + revoke anon/authenticated; never ship service_role to client | S4 **done** (RLS F7 + docs) | ENG-130 | API8 |
 

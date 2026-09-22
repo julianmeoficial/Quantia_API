@@ -103,6 +103,27 @@ export const envSchema = z
       .default(
         'application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       ),
+
+    /** S5 throttling (ttl milliseconds, limit requests). */
+    THROTTLE_DEFAULT_TTL_MS: z.coerce.number().int().positive().default(60_000),
+    THROTTLE_DEFAULT_LIMIT: z.coerce.number().int().positive().default(120),
+    THROTTLE_AUTH_TTL_MS: z.coerce.number().int().positive().default(60_000),
+    THROTTLE_AUTH_LIMIT: z.coerce.number().int().positive().default(10),
+    THROTTLE_REPORTS_TTL_MS: z.coerce.number().int().positive().default(60_000),
+    THROTTLE_REPORTS_LIMIT: z.coerce.number().int().positive().default(5),
+
+    HTTP_JSON_BODY_LIMIT: z.string().min(1).default('1mb'),
+    HTTP_JSON_MAX_DEPTH: z.coerce.number().int().positive().default(10),
+
+    WS_MAX_CONNECTIONS_PER_USER: z.coerce.number().int().positive().default(5),
+    WS_MAX_EVENTS_PER_SECOND: z.coerce.number().int().positive().default(30),
+    WS_IDLE_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
+
+    SECURITY_ALERT_401_403_THRESHOLD: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(50),
   })
   .superRefine((data, ctx) => {
     if (data.APP_ENV === 'production' && data.CORS_VERCEL_PREVIEW) {

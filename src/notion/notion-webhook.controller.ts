@@ -12,12 +12,13 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import { AuditResult, SyncEntityType } from '@prisma/client';
 import { createHmac, timingSafeEqual } from 'crypto';
+import { AuditService } from '../audit/audit.service';
 import { Public } from '../common/decorators/public.decorator';
 import type { EnvConfig } from '../config/env.schema';
 import { NotionSyncEnqueueService } from './notion-sync-enqueue.service';
 import { NotionWebhookReplayService } from './notion-webhook-replay.service';
-import { SyncEntityType } from '@prisma/client';
 
 @ApiTags('webhooks')
 @Controller({ path: 'webhooks/notion', version: '1' })
@@ -28,6 +29,7 @@ export class NotionWebhookController {
     private readonly enqueue: NotionSyncEnqueueService,
     private readonly config: ConfigService<EnvConfig, true>,
     private readonly replay: NotionWebhookReplayService,
+    private readonly audit: AuditService,
   ) {}
 
   @Public()
@@ -44,11 +46,11 @@ export class NotionWebhookController {
       return { verification_token: body.verification_token };
     }
 
-    this.assertSignature(signature, req.rawBody, body);
+    await this.assertSignature(signature, req.rawBody, body);
     // signature is defined after assertSignature
     const sig = signature as string;
 
-    this.assertTimestampInWindow(body);
+    await this.assertTimestampInWindow(body);
     await this.assertNotReplay(sig);
 
     const notionPageId = this.extractPageId(body);
@@ -69,44 +71,56 @@ export class NotionWebhookController {
     return { ok: true };
   }
 
-  private assertSignature(
+  private async rejectWebhook(reason: string): Promise<never> {
+    await this.audit.log({
+      actorId: null,
+      action: 'WEBHOOK_REJECTED',
+      resource: 'webhook',
+      result: AuditResult.DENIED,
+      metadata: { reason },
+    });
+    throw new UnauthorizedException(reason);
+  }
+
+  private async assertSignature(
     signature: string | undefined,
     rawBody: Buffer | undefined,
     body: Record<string, unknown>,
-  ): void {
+  ): Promise<void> {
     const secret = this.config.get('NOTION_WEBHOOK_SECRET', { infer: true });
     if (!signature) {
-      throw new UnauthorizedException('Missing Notion signature');
+      await this.rejectWebhook('Missing Notion signature');
     }
+    const provided = signature as string;
 
     const payload = rawBody?.toString('utf8') ?? JSON.stringify(body);
     const expected = `sha256=${createHmac('sha256', secret)
       .update(payload)
       .digest('hex')}`;
 
-    const a = Buffer.from(signature);
+    const a = Buffer.from(provided);
     const b = Buffer.from(expected);
     if (a.length !== b.length || !timingSafeEqual(a, b)) {
-      throw new UnauthorizedException('Invalid Notion signature');
+      await this.rejectWebhook('Invalid Notion signature');
     }
   }
 
-  private assertTimestampInWindow(body: Record<string, unknown>): void {
+  private async assertTimestampInWindow(
+    body: Record<string, unknown>,
+  ): Promise<void> {
     const skew = this.config.get('NOTION_WEBHOOK_MAX_SKEW_SECONDS', {
       infer: true,
     });
     if (typeof body.timestamp !== 'string') {
-      throw new UnauthorizedException('Webhook timestamp missing or invalid');
+      await this.rejectWebhook('Webhook timestamp missing or invalid');
     }
-    const eventMs = Date.parse(body.timestamp);
+    const eventMs = Date.parse(body.timestamp as string);
     if (Number.isNaN(eventMs)) {
-      throw new UnauthorizedException('Webhook timestamp missing or invalid');
+      await this.rejectWebhook('Webhook timestamp missing or invalid');
     }
     const deltaSec = Math.abs(Date.now() - eventMs) / 1000;
     if (deltaSec > skew) {
-      throw new UnauthorizedException(
-        'Webhook timestamp outside allowed window',
-      );
+      await this.rejectWebhook('Webhook timestamp outside allowed window');
     }
   }
 
@@ -116,7 +130,7 @@ export class NotionWebhookController {
     });
     const claimed = await this.replay.claim(signature, skew);
     if (!claimed) {
-      throw new UnauthorizedException('Webhook replay rejected');
+      await this.rejectWebhook('Webhook replay rejected');
     }
   }
 

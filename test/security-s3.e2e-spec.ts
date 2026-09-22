@@ -79,6 +79,9 @@ describe('Security S3 data hardening (e2e)', () => {
     prisma = app.get(PrismaService);
     documentsService = app.get(DocumentsService);
 
+    await prisma.$executeRawUnsafe(
+      `SELECT set_config('app.audit_mutable', '1', false)`,
+    );
     await prisma.auditLog.deleteMany();
     await prisma.document.deleteMany();
     await prisma.report.deleteMany();

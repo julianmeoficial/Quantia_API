@@ -71,6 +71,9 @@ describe('F5 Budget/Documents/Reports (e2e)', () => {
 
     prisma = app.get(PrismaService);
 
+    await prisma.$executeRawUnsafe(
+      `SELECT set_config('app.audit_mutable', '1', false)`,
+    );
     await prisma.auditLog.deleteMany();
     await prisma.budgetExecution.deleteMany();
     await prisma.budgetItem.deleteMany();
@@ -181,10 +184,15 @@ describe('F5 Budget/Documents/Reports (e2e)', () => {
       .send({ totalAmount: '1.00' })
       .expect(403);
 
-    const denied = await prisma.auditLog.findFirst({
-      where: { result: 'DENIED', resource: 'budget' },
-      orderBy: { createdAt: 'desc' },
-    });
+    let denied: { result: string } | null = null;
+    for (let i = 0; i < 20; i += 1) {
+      denied = await prisma.auditLog.findFirst({
+        where: { result: 'DENIED', resource: 'budget' },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (denied) break;
+      await new Promise((r) => setTimeout(r, 25));
+    }
     expect(denied).toBeTruthy();
   });
 

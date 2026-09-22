@@ -40,3 +40,20 @@ process.env.STORAGE_SIGNED_URL_TTL_SECONDS ??= '300';
 process.env.STORAGE_MAX_UPLOAD_BYTES ??= '26214400';
 process.env.STORAGE_ALLOWED_MIME ??=
   'application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+process.env.THROTTLE_DEFAULT_TTL_MS = '60000';
+process.env.THROTTLE_DEFAULT_LIMIT = '10000';
+process.env.THROTTLE_AUTH_TTL_MS = '60000';
+/** High by default so suites sharing Redis IP do not 429; S5 e2e lowers this. */
+process.env.THROTTLE_AUTH_LIMIT = '1000';
+process.env.THROTTLE_REPORTS_TTL_MS = '60000';
+process.env.THROTTLE_REPORTS_LIMIT = '1000';
+process.env.HTTP_JSON_BODY_LIMIT = process.env.HTTP_JSON_BODY_LIMIT ?? '1mb';
+process.env.HTTP_JSON_MAX_DEPTH = process.env.HTTP_JSON_MAX_DEPTH ?? '10';
+process.env.WS_MAX_CONNECTIONS_PER_USER =
+  process.env.WS_MAX_CONNECTIONS_PER_USER ?? '5';
+process.env.WS_MAX_EVENTS_PER_SECOND =
+  process.env.WS_MAX_EVENTS_PER_SECOND ?? '30';
+process.env.WS_IDLE_TIMEOUT_MS = process.env.WS_IDLE_TIMEOUT_MS ?? '60000';
+process.env.SECURITY_ALERT_401_403_THRESHOLD =
+  process.env.SECURITY_ALERT_401_403_THRESHOLD ?? '50';

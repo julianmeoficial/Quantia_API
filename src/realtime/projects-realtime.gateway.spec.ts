@@ -9,6 +9,20 @@ describe('ProjectsRealtimeGateway', () => {
     roles: [RoleName.INVESTIGADOR],
   };
 
+  const wsLimits = {
+    tryAcquireConnection: jest.fn().mockResolvedValue(true),
+    releaseConnection: jest.fn().mockResolvedValue(undefined),
+    assertEventAllowed: jest.fn().mockResolvedValue(true),
+    setSocketUserId: jest.fn(),
+    getSocketUserId: jest.fn().mockReturnValue('u1'),
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    wsLimits.tryAcquireConnection.mockResolvedValue(true);
+    wsLimits.assertEventAllowed.mockResolvedValue(true);
+  });
+
   it('disconnects when handshake auth fails', async () => {
     const disconnect = jest.fn();
     const client = { id: 's1', disconnect, data: {} };
@@ -22,6 +36,7 @@ describe('ProjectsRealtimeGateway', () => {
     const gateway = new ProjectsRealtimeGateway(
       wsAuth as never,
       access as never,
+      wsLimits as never,
     );
 
     await gateway.handleConnection(client as never);
@@ -42,6 +57,7 @@ describe('ProjectsRealtimeGateway', () => {
     const gateway = new ProjectsRealtimeGateway(
       wsAuth as never,
       access as never,
+      wsLimits as never,
     );
 
     const result = await gateway.handleJoin(client as never, {
@@ -80,6 +96,7 @@ describe('ProjectsRealtimeGateway', () => {
     const gateway = new ProjectsRealtimeGateway(
       wsAuth as never,
       access as never,
+      wsLimits as never,
     );
 
     const result = await gateway.handleJoin(client as never, {
@@ -88,5 +105,20 @@ describe('ProjectsRealtimeGateway', () => {
 
     expect(result.ok).toBe(false);
     expect(client.join).not.toHaveBeenCalled();
+  });
+
+  it('rejects join when event rate exceeded', async () => {
+    wsLimits.assertEventAllowed.mockResolvedValue(false);
+    const client = { id: 's1', join: jest.fn(), emit: jest.fn(), data: {} };
+    const gateway = new ProjectsRealtimeGateway(
+      { getUser: jest.fn() } as never,
+      { assertCanAccessProject: jest.fn() } as never,
+      wsLimits as never,
+    );
+
+    const result = await gateway.handleJoin(client as never, {
+      projectId: '11111111-1111-4111-8111-111111111111',
+    });
+    expect(result).toEqual({ ok: false, error: 'Event rate limit exceeded' });
   });
 });

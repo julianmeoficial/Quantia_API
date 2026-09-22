@@ -8,9 +8,12 @@ import { ProjectsRealtimeGateway } from './projects-realtime.gateway';
 import { RealtimeBridge } from './realtime-bridge.service';
 import { RealtimeCoreModule } from './realtime-core.module';
 import { WsAuthService } from './ws-auth.service';
+import { WsConnectionLimitService } from './ws-connection-limit.service';
+import { RedisModule } from '../redis/redis.module';
 
 @Module({
   imports: [
+    RedisModule,
     RealtimeCoreModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -31,6 +34,7 @@ import { WsAuthService } from './ws-auth.service';
   ],
   providers: [
     WsAuthService,
+    WsConnectionLimitService,
     ProjectsRealtimeGateway,
     NotificationsRealtimeGateway,
     RealtimeBridge,

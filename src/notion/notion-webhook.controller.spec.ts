@@ -23,11 +23,13 @@ describe('NotionWebhookController', () => {
 
   const claim = jest.fn().mockResolvedValue(true);
   const replay = { claim } as unknown as NotionWebhookReplayService;
+  const audit = { log: jest.fn().mockResolvedValue(undefined) };
 
   const controller = new NotionWebhookController(
     enqueue,
     config as never,
     replay,
+    audit as never,
   );
 
   beforeEach(() => {

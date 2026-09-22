@@ -161,12 +161,12 @@ describe('Security S2 BOLA/BFLA (e2e)', () => {
 
   afterAll(async () => {
     try {
-      await app.close();
+      await redisAdapter.close();
     } catch {
       /* ignore */
     }
     try {
-      await redisAdapter.close();
+      await app.close();
     } catch {
       /* ignore */
     }

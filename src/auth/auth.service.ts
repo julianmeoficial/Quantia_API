@@ -1,5 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { AuditResult } from '@prisma/client';
 import { RoleName } from '@quantia/contracts';
+import { AuditService } from '../audit/audit.service';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/auth.dto';
 import { LoginLockoutService } from './login-lockout.service';
@@ -15,6 +17,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly tokensService: TokensService,
     private readonly loginLockout: LoginLockoutService,
+    private readonly audit: AuditService,
   ) {
     this.dummyHashPromise = hashPassword('quantia-dummy-password-not-used');
   }
@@ -24,18 +27,46 @@ export class AuthService {
     clientIp: string,
   ): Promise<IssuedTokens & { tokenType: 'Bearer' }> {
     const ip = clientIp.trim() || 'unknown';
-    await this.loginLockout.assertNotLocked(dto.email, ip);
+    try {
+      await this.loginLockout.assertNotLocked(dto.email, ip);
+    } catch (error) {
+      await this.audit.log({
+        actorId: null,
+        action: 'LOGIN_LOCKOUT',
+        resource: 'auth',
+        result: AuditResult.DENIED,
+        ip,
+        metadata: { reason: 'account_locked' },
+      });
+      throw error;
+    }
 
     const user = await this.usersService.findEntityByEmail(dto.email);
     if (!user || !user.isActive) {
       await verifyPassword(await this.dummyHashPromise, dto.password);
       await this.loginLockout.recordFailure(dto.email, ip);
+      await this.audit.log({
+        actorId: null,
+        action: 'LOGIN_FAILED',
+        resource: 'auth',
+        result: AuditResult.DENIED,
+        ip,
+        metadata: { reason: 'invalid_credentials' },
+      });
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const valid = await verifyPassword(user.passwordHash, dto.password);
     if (!valid) {
       await this.loginLockout.recordFailure(dto.email, ip);
+      await this.audit.log({
+        actorId: user.id,
+        action: 'LOGIN_FAILED',
+        resource: 'auth',
+        result: AuditResult.DENIED,
+        ip,
+        metadata: { reason: 'invalid_credentials' },
+      });
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -61,6 +92,14 @@ export class AuthService {
 
     if (stored.revokedAt) {
       await this.tokensService.revokeFamily(stored.familyId);
+      await this.audit.log({
+        actorId: stored.userId,
+        action: 'REFRESH_REUSE',
+        resource: 'auth',
+        resourceId: stored.familyId,
+        result: AuditResult.DENIED,
+        metadata: { reason: 'refresh_token_reuse' },
+      });
       throw new UnauthorizedException('Refresh token reuse detected');
     }
 

@@ -32,4 +32,29 @@ describe('AuditService', () => {
       },
     });
   });
+
+  it('redacts secrets in metadata', async () => {
+    const create = jest.fn().mockResolvedValue({ id: 'a2' });
+    const service = new AuditService({
+      auditLog: { create },
+    } as never);
+
+    await service.log({
+      action: 'LOGIN_FAILED',
+      resource: 'auth',
+      result: AuditResult.DENIED,
+      metadata: {
+        password: 'secret',
+        nested: { refreshToken: 'rt', ok: true },
+      },
+    });
+
+    const calls = create.mock.calls as Array<
+      [{ data: { metadata: Record<string, unknown> } }]
+    >;
+    expect(calls[0][0].data.metadata).toEqual({
+      password: '[Redacted]',
+      nested: { refreshToken: '[Redacted]', ok: true },
+    });
+  });
 });

@@ -7,6 +7,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { Public } from '../common/decorators/public.decorator';
 import { AuthService } from './auth.service';
@@ -14,6 +15,8 @@ import { LoginDto, LogoutDto, RefreshDto } from './dto/auth.dto';
 
 @ApiTags('auth')
 @Controller({ path: 'auth', version: '1' })
+/** Skip default/reports so only the named `auth` throttler (env) applies. */
+@SkipThrottle({ default: true, reports: true })
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 

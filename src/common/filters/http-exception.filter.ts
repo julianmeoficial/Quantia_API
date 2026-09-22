@@ -4,15 +4,20 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  Injectable,
   Logger,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
 import { MulterError } from 'multer';
+import { SecurityMetricsService } from '../security-metrics.service';
 
 @Catch()
+@Injectable()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name);
+
+  constructor(private readonly securityMetrics: SecurityMetricsService) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -28,6 +33,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
         stack,
       );
     }
+
+    void this.securityMetrics.recordHttpStatus(mapped.status);
 
     response.status(mapped.status).json({
       statusCode: mapped.status,
@@ -76,6 +83,19 @@ export class HttpExceptionFilter implements ExceptionFilter {
           : rawMessage;
       }
       return { status, message };
+    }
+
+    // express body-parser entity too large
+    if (
+      exception &&
+      typeof exception === 'object' &&
+      'type' in exception &&
+      (exception as { type?: string }).type === 'entity.too.large'
+    ) {
+      return {
+        status: HttpStatus.PAYLOAD_TOO_LARGE,
+        message: 'Request body too large',
+      };
     }
 
     return {

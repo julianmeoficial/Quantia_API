@@ -2,19 +2,59 @@ import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import {
+  json,
+  urlencoded,
+  type Request,
+  type Response,
+  type NextFunction,
+} from 'express';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { createCorsOriginDelegate, parseCorsOrigins } from './common/cors.util';
+import { assertJsonDepth } from './common/middleware/json-depth.util';
 import { EnvConfig } from './config/env.schema';
 import { RedisIoAdapter } from './realtime/redis-io.adapter';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
+    bodyParser: false,
     bufferLogs: true,
   });
   app.useLogger(app.get(Logger));
+
+  const configService = app.get(ConfigService<EnvConfig, true>);
+  const bodyLimit = configService.get('HTTP_JSON_BODY_LIMIT', { infer: true });
+  const maxDepth = configService.get('HTTP_JSON_MAX_DEPTH', { infer: true });
+
+  // Manual body parser so we can set size limit and preserve rawBody for Notion HMAC.
+  app.use(
+    json({
+      limit: bodyLimit,
+      verify: (req: Request & { rawBody?: Buffer }, _res, buf) => {
+        req.rawBody = buf;
+      },
+    }),
+  );
+  app.use(urlencoded({ extended: true, limit: bodyLimit }));
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (
+      req.body &&
+      typeof req.body === 'object' &&
+      !assertJsonDepth(req.body, maxDepth)
+    ) {
+      res.status(400).json({
+        statusCode: 400,
+        message: 'JSON body exceeds maximum depth',
+        path: req.url,
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+    next();
+  });
 
   // Railway (and other reverse proxies) terminate TLS; trust X-Forwarded-*.
   const httpAdapter = app.getHttpAdapter();
@@ -49,7 +89,6 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  const configService = app.get(ConfigService<EnvConfig, true>);
   const nodeEnv = configService.get('NODE_ENV', { infer: true });
   const corsOrigins = parseCorsOrigins(
     configService.get('CORS_ORIGINS', { infer: true }),
