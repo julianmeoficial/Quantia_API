@@ -56,4 +56,28 @@ export default (): EnvConfig => ({
   STORAGE_ALLOWED_MIME:
     process.env.STORAGE_ALLOWED_MIME ??
     'application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+
+  THROTTLE_DEFAULT_TTL_MS: Number(
+    process.env.THROTTLE_DEFAULT_TTL_MS ?? 60_000,
+  ),
+  THROTTLE_DEFAULT_LIMIT: Number(process.env.THROTTLE_DEFAULT_LIMIT ?? 120),
+  THROTTLE_AUTH_TTL_MS: Number(process.env.THROTTLE_AUTH_TTL_MS ?? 60_000),
+  THROTTLE_AUTH_LIMIT: Number(process.env.THROTTLE_AUTH_LIMIT ?? 10),
+  THROTTLE_REPORTS_TTL_MS: Number(
+    process.env.THROTTLE_REPORTS_TTL_MS ?? 60_000,
+  ),
+  THROTTLE_REPORTS_LIMIT: Number(process.env.THROTTLE_REPORTS_LIMIT ?? 5),
+
+  HTTP_JSON_BODY_LIMIT: process.env.HTTP_JSON_BODY_LIMIT ?? '1mb',
+  HTTP_JSON_MAX_DEPTH: Number(process.env.HTTP_JSON_MAX_DEPTH ?? 10),
+
+  WS_MAX_CONNECTIONS_PER_USER: Number(
+    process.env.WS_MAX_CONNECTIONS_PER_USER ?? 5,
+  ),
+  WS_MAX_EVENTS_PER_SECOND: Number(process.env.WS_MAX_EVENTS_PER_SECOND ?? 30),
+  WS_IDLE_TIMEOUT_MS: Number(process.env.WS_IDLE_TIMEOUT_MS ?? 60_000),
+
+  SECURITY_ALERT_401_403_THRESHOLD: Number(
+    process.env.SECURITY_ALERT_401_403_THRESHOLD ?? 50,
+  ),
 });

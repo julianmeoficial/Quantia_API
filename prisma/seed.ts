@@ -92,6 +92,9 @@ async function main(): Promise<void> {
   const researcherB = seededUsers['researcher-b@quantia.local'];
 
   // Child tables first (F5 + domain) so re-seed is idempotent.
+  await prisma.$executeRawUnsafe(
+    `SELECT set_config('app.audit_mutable', '1', false)`,
+  );
   await prisma.auditLog.deleteMany();
   await prisma.report.deleteMany();
   await prisma.document.deleteMany();

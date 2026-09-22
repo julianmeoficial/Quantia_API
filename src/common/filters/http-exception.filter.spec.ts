@@ -1,10 +1,15 @@
 import { HttpStatus } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { MulterError } from 'multer';
+import { SecurityMetricsService } from '../security-metrics.service';
 import { HttpExceptionFilter } from './http-exception.filter';
 
 describe('HttpExceptionFilter', () => {
-  const filter = new HttpExceptionFilter();
+  const recordHttpStatus = jest.fn().mockResolvedValue(undefined);
+  const metrics = {
+    recordHttpStatus,
+  } as unknown as SecurityMetricsService;
+  const filter = new HttpExceptionFilter(metrics);
 
   function run(exception: unknown): {
     status: number;
@@ -32,11 +37,16 @@ describe('HttpExceptionFilter', () => {
     return { status: statusCode, body };
   }
 
+  beforeEach(() => {
+    recordHttpStatus.mockClear();
+  });
+
   it('maps Multer LIMIT_FILE_SIZE to 413', () => {
     const { status, body } = run(new MulterError('LIMIT_FILE_SIZE'));
     expect(status).toBe(HttpStatus.PAYLOAD_TOO_LARGE);
     expect(body.message).toBe('File too large');
     expect(body).not.toHaveProperty('stack');
+    expect(recordHttpStatus).toHaveBeenCalledWith(HttpStatus.PAYLOAD_TOO_LARGE);
   });
 
   it('maps Prisma unique conflict without leaking meta', () => {

@@ -49,6 +49,7 @@
     "@nestjs/platform-socket.io": "^11.2.5",
     "@nestjs/swagger": "^11.4.7",
     "@nestjs/terminus": "^11.0.0",
+    "@nestjs/throttler": "^6.7.0",
     "@nestjs/websockets": "^11.2.5",
     "@notionhq/client": "^5.26.0",
     "@prisma/client": "^6.16.1",

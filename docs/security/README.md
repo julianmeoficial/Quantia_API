@@ -8,6 +8,7 @@ Hardening evidence for the Quantia API after the F7 functional freeze. Phases fo
 | [`../architecture/auth.md`](../architecture/auth.md) | **S2** (ENG-128) | JWT iss/aud, lockout, object-level authz |
 | [`data-hardening.md`](./data-hardening.md) | **S3** (ENG-129) | ValidationPipe, DTOs, uploads, error sanitization |
 | [`infra-hardening.md`](./infra-hardening.md) | **S4** (ENG-130) | Secrets, helmet, APP_ENV, webhook window/replay, gitleaks/trivy |
+| [`resilience.md`](./resilience.md) | **S5** (ENG-131) | Throttling Redis, quotas, WS limits, audit immutability, 401/403 alerts |
 
 ## Related architecture inputs
 

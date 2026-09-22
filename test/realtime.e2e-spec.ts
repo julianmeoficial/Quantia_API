@@ -113,14 +113,14 @@ describe('Realtime Socket.io (e2e)', () => {
 
   afterAll(async () => {
     try {
-      await app.close();
-    } catch {
-      // ignore redis subscriber teardown races
-    }
-    try {
       await redisAdapter.close();
     } catch {
       // ignore adapter quit races
+    }
+    try {
+      await app.close();
+    } catch {
+      // ignore redis subscriber teardown races
     }
   }, 15000);
 

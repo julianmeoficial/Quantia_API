@@ -9,10 +9,13 @@ import { AuditResult } from '@prisma/client';
 import { RoleName } from '@quantia/contracts';
 import { Request } from 'express';
 import { AuditService } from '../../audit/audit.service';
+import {
+  isAuditedMutationPath,
+  resolveAuditResource,
+  resolveAuditResourceId,
+} from '../../audit/audit-paths';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { AuthenticatedUser } from '../interfaces/jwt-payload.interface';
-
-const AUDITED_PATH_RE = /\/budget|\/documents|\/reports/;
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -21,7 +24,7 @@ export class RolesGuard implements CanActivate {
     private readonly audit: AuditService,
   ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiredRoles = this.reflector.getAllAndOverride<RoleName[]>(
       ROLES_KEY,
       [context.getHandler(), context.getClass()],
@@ -40,7 +43,7 @@ export class RolesGuard implements CanActivate {
 
     const hasRole = requiredRoles.some((role) => user.roles.includes(role));
     if (!hasRole) {
-      this.auditRoleDenial(request);
+      await this.auditRoleDenial(request);
       throw new ForbiddenException('Insufficient role');
     }
     return true;
@@ -50,9 +53,9 @@ export class RolesGuard implements CanActivate {
    * Guards run before interceptors, so role denials never reach AuditInterceptor.
    * Mirror DENIED logging here for the same audited mutation paths.
    */
-  private auditRoleDenial(
+  private async auditRoleDenial(
     request: Request & { user?: AuthenticatedUser },
-  ): void {
+  ): Promise<void> {
     const method = (request.method ?? 'GET').toUpperCase();
     if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
       return;
@@ -61,31 +64,15 @@ export class RolesGuard implements CanActivate {
     const url = request.url ?? '';
     const route = request.route as { path?: unknown } | undefined;
     const routePath = typeof route?.path === 'string' ? route.path : '';
-    if (!AUDITED_PATH_RE.test(url) && !AUDITED_PATH_RE.test(routePath)) {
+    if (!isAuditedMutationPath(url, routePath)) {
       return;
     }
 
-    const haystack = `${url} ${routePath}`;
-    let resource = 'unknown';
-    if (haystack.includes('/budget')) resource = 'budget';
-    else if (haystack.includes('/documents')) resource = 'documents';
-    else if (haystack.includes('/reports')) resource = 'reports';
-
-    const params = request.params ?? {};
-    const raw =
-      params.id ??
-      params.documentId ??
-      params.reportId ??
-      params.executionId ??
-      params.projectId ??
-      null;
-    const resourceId = Array.isArray(raw) ? (raw[0] ?? null) : raw;
-
-    void this.audit.log({
+    await this.audit.log({
       actorId: request.user?.id ?? null,
       action: `${method} ${routePath || request.path || url}`,
-      resource,
-      resourceId,
+      resource: resolveAuditResource(url, routePath),
+      resourceId: resolveAuditResourceId(request.params ?? {}),
       result: AuditResult.DENIED,
       ip: request.ip ?? null,
       userAgent: request.get?.('user-agent') ?? null,

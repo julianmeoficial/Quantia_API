@@ -12,6 +12,7 @@ import {
 } from '@quantia/contracts';
 import type { Server, Socket } from 'socket.io';
 import { WsAuthService } from './ws-auth.service';
+import { WsConnectionLimitService } from './ws-connection-limit.service';
 
 @WebSocketGateway({
   namespace: RealtimeNamespace.NOTIFICATIONS,
@@ -25,11 +26,24 @@ export class NotificationsRealtimeGateway
   @WebSocketServer()
   server!: Server;
 
-  constructor(private readonly wsAuth: WsAuthService) {}
+  constructor(
+    private readonly wsAuth: WsAuthService,
+    private readonly wsLimits: WsConnectionLimitService,
+  ) {}
 
   async handleConnection(client: Socket): Promise<void> {
     try {
       const user = await this.wsAuth.authenticateSocket(client);
+      const allowed = await this.wsLimits.tryAcquireConnection(
+        user.id,
+        client.id,
+      );
+      if (!allowed) {
+        client.emit('error', { message: 'Too many connections' });
+        client.disconnect(true);
+        return;
+      }
+      this.wsLimits.setSocketUserId(client, user.id);
       await client.join(userRoom(user.id));
       this.logger.debug(
         `notifications ns connected socket=${client.id} user=${user.id}`,
@@ -42,7 +56,11 @@ export class NotificationsRealtimeGateway
     }
   }
 
-  handleDisconnect(client: Socket): void {
+  async handleDisconnect(client: Socket): Promise<void> {
+    const userId = this.wsLimits.getSocketUserId(client);
+    if (userId) {
+      await this.wsLimits.releaseConnection(userId, client.id);
+    }
     this.logger.debug(`notifications ns disconnected socket=${client.id}`);
   }
 

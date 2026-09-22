@@ -44,32 +44,32 @@ describe('RolesGuard', () => {
     auditLog.mockClear();
   });
 
-  it('allows when no roles are required', () => {
+  it('allows when no roles are required', async () => {
     getAllAndOverride.mockReturnValue(undefined);
-    expect(guard.canActivate(createContext())).toBe(true);
+    await expect(guard.canActivate(createContext())).resolves.toBe(true);
   });
 
-  it('allows when user has required role', () => {
+  it('allows when user has required role', async () => {
     getAllAndOverride.mockReturnValue([RoleName.ADMINISTRADOR]);
-    expect(
+    await expect(
       guard.canActivate(
         createContext({ user: { roles: [RoleName.ADMINISTRADOR] } }),
       ),
-    ).toBe(true);
+    ).resolves.toBe(true);
   });
 
-  it('denies when user lacks required role', () => {
+  it('denies when user lacks required role', async () => {
     getAllAndOverride.mockReturnValue([RoleName.ADMINISTRADOR]);
-    expect(() =>
+    await expect(
       guard.canActivate(
         createContext({ user: { roles: [RoleName.INVESTIGADOR] } }),
       ),
-    ).toThrow('Insufficient role');
+    ).rejects.toThrow('Insufficient role');
   });
 
-  it('audits DENIED on budget mutation role denial', () => {
+  it('audits DENIED on budget mutation role denial', async () => {
     getAllAndOverride.mockReturnValue([RoleName.COORDINADOR]);
-    expect(() =>
+    await expect(
       guard.canActivate(
         createContext({
           user: { id: 'u1', roles: [RoleName.INVESTIGADOR] },
@@ -79,7 +79,7 @@ describe('RolesGuard', () => {
           params: { projectId: 'p1' },
         }),
       ),
-    ).toThrow('Insufficient role');
+    ).rejects.toThrow('Insufficient role');
 
     expect(auditLog).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -91,9 +91,9 @@ describe('RolesGuard', () => {
     );
   });
 
-  it('does not audit role denial on non-audited paths', () => {
+  it('does not audit role denial on non-mutation GET', async () => {
     getAllAndOverride.mockReturnValue([RoleName.ADMINISTRADOR]);
-    expect(() =>
+    await expect(
       guard.canActivate(
         createContext({
           user: { roles: [RoleName.INVESTIGADOR] },
@@ -101,13 +101,13 @@ describe('RolesGuard', () => {
           url: '/api/v1/users',
         }),
       ),
-    ).toThrow('Insufficient role');
+    ).rejects.toThrow('Insufficient role');
     expect(auditLog).not.toHaveBeenCalled();
   });
 
-  it('reads ROLES_KEY metadata key', () => {
+  it('reads ROLES_KEY metadata key', async () => {
     getAllAndOverride.mockReturnValue([]);
-    guard.canActivate(createContext());
+    await guard.canActivate(createContext());
     expect(getAllAndOverride).toHaveBeenCalledWith(
       ROLES_KEY,
       expect.any(Array),

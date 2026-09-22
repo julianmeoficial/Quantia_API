@@ -1,5 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { RoleName } from '@quantia/contracts';
+import { AuditService } from '../audit/audit.service';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import { LoginLockoutService } from './login-lockout.service';
@@ -24,6 +25,7 @@ describe('AuthService', () => {
   const assertNotLocked = jest.fn().mockResolvedValue(undefined);
   const recordFailure = jest.fn().mockResolvedValue(undefined);
   const clear = jest.fn().mockResolvedValue(undefined);
+  const auditLog = jest.fn().mockResolvedValue(undefined);
 
   const usersService = {
     findEntityByEmail,
@@ -42,7 +44,14 @@ describe('AuthService', () => {
     clear,
   } as unknown as LoginLockoutService;
 
-  const service = new AuthService(usersService, tokensService, loginLockout);
+  const audit = { log: auditLog } as unknown as AuditService;
+
+  const service = new AuthService(
+    usersService,
+    tokensService,
+    loginLockout,
+    audit,
+  );
 
   const user = {
     id: 'u1',
@@ -110,6 +119,7 @@ describe('AuthService', () => {
     findRefreshByRawToken.mockResolvedValue({
       id: 'rt1',
       familyId: 'fam1',
+      userId: 'u1',
       revokedAt: new Date(),
       expiresAt: new Date(Date.now() + 60_000),
       user: user,
@@ -119,6 +129,9 @@ describe('AuthService', () => {
       UnauthorizedException,
     );
     expect(revokeFamily).toHaveBeenCalledWith('fam1');
+    expect(auditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'REFRESH_REUSE' }),
+    );
   });
 
   it('rotates refresh tokens on success', async () => {

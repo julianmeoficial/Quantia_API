@@ -9,6 +9,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/interfaces/jwt-payload.interface';
 import { CreateReportDto } from './dto/report.dto';
@@ -22,6 +23,8 @@ export class ReportsController {
 
   @Post()
   @HttpCode(HttpStatus.ACCEPTED)
+  /** Skip default/auth so only the named `reports` throttler (env) applies. */
+  @SkipThrottle({ default: true, auth: true })
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Param('projectId', ParseUUIDPipe) projectId: string,
