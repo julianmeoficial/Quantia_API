@@ -91,16 +91,13 @@ export class AuthService {
     }
 
     if (stored.revokedAt) {
-      await this.tokensService.revokeFamily(stored.familyId);
-      await this.audit.log({
-        actorId: stored.userId,
-        action: 'REFRESH_REUSE',
-        resource: 'auth',
-        resourceId: stored.familyId,
-        result: AuditResult.DENIED,
-        metadata: { reason: 'refresh_token_reuse' },
-      });
-      throw new UnauthorizedException('Refresh token reuse detected');
+      // Classic theft: old token reused after a completed rotation.
+      if (stored.replacedById) {
+        await this.rejectRefreshReuse(stored.userId, stored.familyId);
+      }
+      // Consumed mid-flight (peer won tryConsume) or logout — reject without
+      // killing the winner's newly issued refresh.
+      throw new UnauthorizedException('Invalid refresh token');
     }
 
     if (stored.expiresAt.getTime() < Date.now()) {
@@ -111,6 +108,15 @@ export class AuthService {
     if (!stored.user.isActive) {
       await this.tokensService.revokeFamily(stored.familyId);
       throw new UnauthorizedException('User inactive');
+    }
+
+    // Consume atomically before issuing a replacement (closes QX-P5-001 race).
+    const consumed = await this.tokensService.tryConsumeRefresh(stored.id);
+    if (!consumed) {
+      // Another concurrent refresh won the consume; do not revoke the family
+      // (that would kill the winner's new token). Classic reuse is handled above
+      // when revokedAt was already set on read.
+      throw new UnauthorizedException('Refresh token reuse detected');
     }
 
     const roles: RoleName[] = stored.user.userRoles.map((ur) => ur.role.name);
@@ -125,9 +131,27 @@ export class AuthService {
     const newStored = await this.tokensService.findRefreshByRawToken(
       tokens.refreshToken,
     );
-    await this.tokensService.revokeToken(stored.id, newStored?.id);
+    if (newStored?.id) {
+      await this.tokensService.linkReplacedBy(stored.id, newStored.id);
+    }
 
     return { ...tokens, tokenType: 'Bearer' };
+  }
+
+  private async rejectRefreshReuse(
+    userId: string,
+    familyId: string,
+  ): Promise<never> {
+    await this.tokensService.revokeFamily(familyId);
+    await this.audit.log({
+      actorId: userId,
+      action: 'REFRESH_REUSE',
+      resource: 'auth',
+      resourceId: familyId,
+      result: AuditResult.DENIED,
+      metadata: { reason: 'refresh_token_reuse' },
+    });
+    throw new UnauthorizedException('Refresh token reuse detected');
   }
 
   async logout(refreshToken: string): Promise<void> {
