@@ -216,7 +216,10 @@ describe('Auth & Users (e2e)', () => {
   });
 
   it('allows at most one winner when the same refresh is used in parallel (QX-P5-001)', async () => {
-    const loginBody = await login('researcher@quantia.test', passwords.researcher);
+    const loginBody = await login(
+      'researcher@quantia.test',
+      passwords.researcher,
+    );
     const rt = loginBody.refreshToken;
 
     const [a, b] = await Promise.all([
