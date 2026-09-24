@@ -121,6 +121,25 @@ export class TokensService {
     });
   }
 
+  /**
+   * Atomically consume a refresh row (QX-P5-001). Only one concurrent caller
+   * succeeds when `revokedAt` is still null.
+   */
+  async tryConsumeRefresh(id: string): Promise<boolean> {
+    const result = await this.prisma.refreshToken.updateMany({
+      where: { id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return result.count === 1;
+  }
+
+  async linkReplacedBy(id: string, replacedById: string): Promise<void> {
+    await this.prisma.refreshToken.update({
+      where: { id },
+      data: { replacedById },
+    });
+  }
+
   async revokeFamily(familyId: string): Promise<void> {
     await this.prisma.refreshToken.updateMany({
       where: { familyId, revokedAt: null },
