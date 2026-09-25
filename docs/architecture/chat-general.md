@@ -8,10 +8,10 @@ Registro de usuarios sigue siendo **solo Admin** (`POST /users`); este documento
 
 ### Namespace `/general` + room fija `general`
 
-| Opción | Pros | Contras |
-|--------|------|---------|
-| **Namespace `/general` (elegida)** | Aislamiento total; auto-join sin tocar `join` de proyectos; feature flag limpio; presencia propia | Un socket más por pestaña (cuenta en `WS_MAX_CONNECTIONS_PER_USER`) |
-| Room `general` dentro de `/projects` | Menos namespaces | Obliga a casos especiales en el gateway de proyectos; mezcla presencia de chat con fanout de dominio |
+| Opción                               | Pros                                                                                              | Contras                                                                                              |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Namespace `/general` (elegida)**   | Aislamiento total; auto-join sin tocar `join` de proyectos; feature flag limpio; presencia propia | Un socket más por pestaña (cuenta en `WS_MAX_CONNECTIONS_PER_USER`)                                  |
+| Room `general` dentro de `/projects` | Menos namespaces                                                                                  | Obliga a casos especiales en el gateway de proyectos; mezcla presencia de chat con fanout de dominio |
 
 `CHAT_GENERAL_ROOM` (default `general`) nombra la room Socket.io. JWT obligatorio (`handshake.auth.token`), igual que `/projects` y `/notifications`.
 
@@ -19,12 +19,12 @@ Registro de usuarios sigue siendo **solo Admin** (`POST /users`); este documento
 
 Claves (prefijo `quantia:chat:general:presence:`):
 
-| Clave | Tipo | Uso |
-|-------|------|-----|
-| `users` | ZSET | member=`userId`, score=`lastSeenEpochMs` |
-| `user:{userId}:sockets` | SET | sockets activos del usuario |
-| `socket:{socketId}` | STRING | valor=`userId`, TTL `CHAT_GENERAL_PRESENCE_TTL_SECONDS` |
-| `reconcile:lock` | STRING | `SET NX PX` — una réplica limpia huérfanos |
+| Clave                   | Tipo   | Uso                                                     |
+| ----------------------- | ------ | ------------------------------------------------------- |
+| `users`                 | ZSET   | member=`userId`, score=`lastSeenEpochMs`                |
+| `user:{userId}:sockets` | SET    | sockets activos del usuario                             |
+| `socket:{socketId}`     | STRING | valor=`userId`, TTL `CHAT_GENERAL_PRESENCE_TTL_SECONDS` |
+| `reconcile:lock`        | STRING | `SET NX PX` — una réplica limpia huérfanos              |
 
 Join/leave atómicos vía Lua. `usuario-conectado` solo en transición 0→1 sockets; `usuario-desconectado` solo al cerrar el último. Heartbeat por instancia renueva TTL; reconciliación elimina sockets cuya clave `socket:*` expiró (crash de réplica).
 
@@ -44,12 +44,12 @@ Tabla Prisma `GeneralChatMessage` → `general_chat_messages` (migración `20260
 
 Definidos en [`packages/contracts/src/chat-general.ts`](../../packages/contracts/src/chat-general.ts):
 
-| Evento | Payload |
-|--------|---------|
-| `chat.general.presencia` | `{ users: PresenceUser[], generatedAt }` |
-| `chat.general.usuario-conectado` | `{ user: PresenceUser, occurredAt }` |
-| `chat.general.usuario-desconectado` | `{ userId, occurredAt }` |
-| `chat.general.mensaje-creado` | `{ message: GeneralChatMessageDto }` |
+| Evento                              | Payload                                  |
+| ----------------------------------- | ---------------------------------------- |
+| `chat.general.presencia`            | `{ users: PresenceUser[], generatedAt }` |
+| `chat.general.usuario-conectado`    | `{ user: PresenceUser, occurredAt }`     |
+| `chat.general.usuario-desconectado` | `{ userId, occurredAt }`                 |
+| `chat.general.mensaje-creado`       | `{ message: GeneralChatMessageDto }`     |
 
 `PresenceUser`: `{ id, name, avatarUrl }` — nunca email, roles ni tokens.
 
@@ -61,25 +61,25 @@ Los eventos RF-12/RF-13 (`tarea.actualizada`, …) y los namespaces `/projects` 
 
 Auth: JWT. Cualquier rol autenticado. Si `CHAT_GENERAL_ENABLED=false` → **404**.
 
-| Method | Path | Notas |
-|--------|------|-------|
-| `POST` | `/chat/general/messages` | Body `{ content, clientMessageId? }`. **201** create / **200** idempotente. Throttle nombrado `chat-general` (`CHAT_GENERAL_RATE_LIMIT`/min). Persiste y luego emite `mensaje-creado`. |
-| `GET` | `/chat/general/messages?cursor=&limit=` | `{ items, nextCursor, hasMore }`. Default/max limit por env. Cursor inválido → 400. |
+| Method | Path                                    | Notas                                                                                                                                                                                  |
+| ------ | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/chat/general/messages`                | Body `{ content, clientMessageId? }`. **201** create / **200** idempotente. Throttle nombrado `chat-general` (`CHAT_GENERAL_RATE_LIMIT`/min). Persiste y luego emite `mensaje-creado`. |
+| `GET`  | `/chat/general/messages?cursor=&limit=` | `{ items, nextCursor, hasMore }`. Default/max limit por env. Cursor inválido → 400.                                                                                                    |
 
 No hay rol prohibido para estas rutas: **403 no aplica** (cualquier usuario activo del semillero). 401 sin token.
 
 ## Variables de entorno
 
-| Variable | Default | Notas |
-|----------|---------|-------|
-| `CHAT_GENERAL_ENABLED` | `false` | Staging/local: `true` |
-| `CHAT_GENERAL_ROOM` | `general` | Nombre de room Socket.io |
-| `CHAT_GENERAL_HISTORY_DEFAULT_LIMIT` | `30` | |
-| `CHAT_GENERAL_HISTORY_MAX_LIMIT` | `100` | |
-| `CHAT_GENERAL_MESSAGE_MAX_LENGTH` | `2000` | Tope duro contrato 4000 |
-| `CHAT_GENERAL_PRESENCE_TTL_SECONDS` | `60` | |
-| `CHAT_GENERAL_HEARTBEAT_SECONDS` | `20` | Debe ser `<` TTL |
-| `CHAT_GENERAL_RATE_LIMIT` | `20` | POST/min |
+| Variable                             | Default   | Notas                    |
+| ------------------------------------ | --------- | ------------------------ |
+| `CHAT_GENERAL_ENABLED`               | `false`   | Staging/local: `true`    |
+| `CHAT_GENERAL_ROOM`                  | `general` | Nombre de room Socket.io |
+| `CHAT_GENERAL_HISTORY_DEFAULT_LIMIT` | `30`      |                          |
+| `CHAT_GENERAL_HISTORY_MAX_LIMIT`     | `100`     |                          |
+| `CHAT_GENERAL_MESSAGE_MAX_LENGTH`    | `2000`    | Tope duro contrato 4000  |
+| `CHAT_GENERAL_PRESENCE_TTL_SECONDS`  | `60`      |                          |
+| `CHAT_GENERAL_HEARTBEAT_SECONDS`     | `20`      | Debe ser `<` TTL         |
+| `CHAT_GENERAL_RATE_LIMIT`            | `20`      | POST/min                 |
 
 `REDIS_URL`, `DATABASE_URL`, `DIRECT_URL` ya existían.
 
@@ -113,4 +113,4 @@ No hay rol prohibido para estas rutas: **403 no aplica** (cualquier usuario acti
 - [`src/realtime/chat-general-presence.service.ts`](../../src/realtime/chat-general-presence.service.ts)
 - Emitter / bridge ampliados de forma aditiva
 
-Pruebas amplias: ENG-172. Mínimas en esta issue: unit + e2e REST/WS.
+Pruebas amplias: [ENG-172](./chat-general-testing.md) (matriz AC + e2e multi-réplica). Mínimas en ENG-171: unit + e2e REST/WS.
