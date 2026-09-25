@@ -8,11 +8,7 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
-import {
-  RealtimeNamespace,
-  joinProjectRoomSchema,
-  type RealtimeEvent,
-} from '@quantia/contracts';
+import { RealtimeNamespace, joinProjectRoomSchema } from '@quantia/contracts';
 import type { Server, Socket } from 'socket.io';
 import { ProjectAccessService } from '../common/project-access.service';
 import { WsAuthService } from './ws-auth.service';
@@ -100,7 +96,7 @@ export class ProjectsRealtimeGateway
     }
   }
 
-  emitToRoom(room: string, event: RealtimeEvent, payload: unknown): void {
+  emitToRoom(room: string, event: string, payload: unknown): void {
     this.server.to(room).emit(event, payload);
   }
 }

@@ -5,11 +5,7 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
-import {
-  RealtimeNamespace,
-  userRoom,
-  type RealtimeEvent,
-} from '@quantia/contracts';
+import { RealtimeNamespace, userRoom } from '@quantia/contracts';
 import type { Server, Socket } from 'socket.io';
 import { WsAuthService } from './ws-auth.service';
 import { WsConnectionLimitService } from './ws-connection-limit.service';
@@ -64,7 +60,7 @@ export class NotificationsRealtimeGateway
     this.logger.debug(`notifications ns disconnected socket=${client.id}`);
   }
 
-  emitToRoom(room: string, event: RealtimeEvent, payload: unknown): void {
+  emitToRoom(room: string, event: string, payload: unknown): void {
     this.server.to(room).emit(event, payload);
   }
 }

@@ -4,7 +4,7 @@ import {
   VersioningType,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { RealtimeEvent, RoleName } from '@quantia/contracts';
+import { ChatGeneralEvent, RealtimeEvent, RoleName } from '@quantia/contracts';
 import * as argon2 from 'argon2';
 import { io, type Socket } from 'socket.io-client';
 import request from 'supertest';
@@ -72,6 +72,7 @@ describe('Realtime Socket.io (e2e)', () => {
     emitter = app.get(RealtimeEmitter);
 
     await prisma.syncEvent.deleteMany();
+    await prisma.generalChatMessage.deleteMany();
     await prisma.progress.deleteMany();
     await prisma.task.deleteMany();
     await prisma.projectMember.deleteMany();
@@ -135,17 +136,22 @@ describe('Realtime Socket.io (e2e)', () => {
       reconnection: false,
       timeout: 5000,
     });
-    const authenticated = new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('auth timeout')), 5000);
-      socket.once('authenticated', () => {
-        clearTimeout(timer);
-        resolve();
-      });
-      socket.on('connect_error', (err) => {
-        clearTimeout(timer);
-        reject(err);
-      });
-    });
+    const authenticated = token
+      ? new Promise<void>((resolve, reject) => {
+          const timer = setTimeout(
+            () => reject(new Error('auth timeout')),
+            5000,
+          );
+          socket.once('authenticated', () => {
+            clearTimeout(timer);
+            resolve();
+          });
+          socket.on('connect_error', (err) => {
+            clearTimeout(timer);
+            reject(err);
+          });
+        })
+      : Promise.resolve();
     return { socket, authenticated };
   }
 
@@ -256,5 +262,96 @@ describe('Realtime Socket.io (e2e)', () => {
 
     a.socket.close();
     b.socket.close();
+  }, 20000);
+
+  function connectGeneral(token?: string): Socket {
+    return io(`${baseUrl}/general`, {
+      auth: token ? { token } : {},
+      transports: ['websocket'],
+      forceNew: true,
+      reconnection: false,
+      timeout: 5000,
+    });
+  }
+
+  it('rejects /general client without JWT', async () => {
+    const socket = connectGeneral();
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error('Expected rejection without JWT on /general')),
+        5000,
+      );
+      socket.on('connect_error', () => {
+        clearTimeout(timer);
+        socket.close();
+        resolve();
+      });
+      socket.on('disconnect', () => {
+        clearTimeout(timer);
+        socket.close();
+        resolve();
+      });
+    });
+  });
+
+  it('sends presencia on /general join and fans out mensaje-creado', async () => {
+    const a = connectGeneral(accessToken);
+    const b = connectGeneral(accessToken);
+
+    const presenciaA = new Promise<unknown>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error('presencia timeout')),
+        8000,
+      );
+      a.once(ChatGeneralEvent.PRESENCIA, (body) => {
+        clearTimeout(timer);
+        resolve(body);
+      });
+    });
+
+    await Promise.all([waitConnected(a), waitConnected(b), presenciaA]);
+
+    const received = Promise.all([
+      new Promise<unknown>((resolve) => {
+        a.once(ChatGeneralEvent.MENSAJE_CREADO, resolve);
+      }),
+      new Promise<unknown>((resolve) => {
+        b.once(ChatGeneralEvent.MENSAJE_CREADO, resolve);
+      }),
+    ]);
+
+    await emitter.emitChatGeneralMensajeCreado({
+      message: {
+        id: '66666666-6666-4666-8666-666666666666',
+        content: 'desde bridge',
+        clientMessageId: null,
+        createdAt: new Date().toISOString(),
+        author: {
+          id: '77777777-7777-4777-8777-777777777777',
+          name: 'Bridge',
+          avatarUrl: null,
+        },
+      },
+    });
+
+    const [eventA, eventB] = await Promise.race([
+      received,
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error('Timed out waiting for mensaje-creado')),
+          8000,
+        ),
+      ),
+    ]);
+
+    expect(eventA).toMatchObject({
+      message: { content: 'desde bridge' },
+    });
+    expect(eventB).toMatchObject({
+      message: { content: 'desde bridge' },
+    });
+
+    a.close();
+    b.close();
   }, 20000);
 });

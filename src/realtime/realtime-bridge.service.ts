@@ -9,6 +9,7 @@ import { realtimeEnvelopeSchema, RealtimeNamespace } from '@quantia/contracts';
 import Redis from 'ioredis';
 import type { EnvConfig } from '../config/env.schema';
 import { REALTIME_REDIS_CHANNEL } from '../queues/realtime.constants';
+import { GeneralRealtimeGateway } from './general-realtime.gateway';
 import { NotificationsRealtimeGateway } from './notifications-realtime.gateway';
 import { ProjectsRealtimeGateway } from './projects-realtime.gateway';
 
@@ -21,6 +22,7 @@ export class RealtimeBridge implements OnModuleInit, OnModuleDestroy {
     private readonly config: ConfigService<EnvConfig, true>,
     private readonly projectsGateway: ProjectsRealtimeGateway,
     private readonly notificationsGateway: NotificationsRealtimeGateway,
+    private readonly generalGateway: GeneralRealtimeGateway,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -28,17 +30,32 @@ export class RealtimeBridge implements OnModuleInit, OnModuleDestroy {
     this.subscriber = new Redis(url, {
       maxRetriesPerRequest: null,
       lazyConnect: true,
+      retryStrategy: (times) => Math.min(times * 200, 5_000),
     });
     this.subscriber.on('error', (err) => {
       this.logger.warn(`Realtime subscriber error: ${err.message}`);
     });
+    this.subscriber.on('ready', () => {
+      void this.ensureSubscribed();
+    });
     await this.subscriber.connect();
-    await this.subscriber.subscribe(REALTIME_REDIS_CHANNEL);
+    await this.ensureSubscribed();
     this.subscriber.on('message', (channel, message) => {
       if (channel !== REALTIME_REDIS_CHANNEL) return;
       this.handleMessage(message);
     });
     this.logger.log(`Subscribed to ${REALTIME_REDIS_CHANNEL}`);
+  }
+
+  private async ensureSubscribed(): Promise<void> {
+    if (!this.subscriber) return;
+    try {
+      await this.subscriber.subscribe(REALTIME_REDIS_CHANNEL);
+    } catch (error) {
+      this.logger.warn(
+        `Realtime resubscribe failed: ${(error as Error).message}`,
+      );
+    }
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -65,8 +82,10 @@ export class RealtimeBridge implements OnModuleInit, OnModuleDestroy {
       const { event, namespace, room, payload } = parsed.data;
       if (namespace === RealtimeNamespace.PROJECTS) {
         this.projectsGateway.emitToRoom(room, event, payload);
-      } else {
+      } else if (namespace === RealtimeNamespace.NOTIFICATIONS) {
         this.notificationsGateway.emitToRoom(room, event, payload);
+      } else if (namespace === RealtimeNamespace.GENERAL) {
+        this.generalGateway.emitToRoom(room, event, payload);
       }
     } catch (error) {
       this.logger.warn(

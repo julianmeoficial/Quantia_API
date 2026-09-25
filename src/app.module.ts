@@ -5,6 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { BudgetModule } from './budget/budget.module';
+import { ChatGeneralModule } from './chat-general/chat-general.module';
 import { CommonModule } from './common/common.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -70,6 +71,22 @@ import { UsersModule } from './users/users.module';
               return method !== 'POST' || !url.includes('/reports');
             },
           },
+          {
+            name: 'chat-general',
+            ttl: 60_000,
+            limit: config.get('CHAT_GENERAL_RATE_LIMIT', { infer: true }),
+            skipIf: (ctx) => {
+              const req = ctx.switchToHttp().getRequest<{
+                method?: string;
+                url?: string;
+              }>();
+              const method = (req.method ?? '').toUpperCase();
+              const url = String(req.url ?? '');
+              return (
+                method !== 'POST' || !url.includes('/chat/general/messages')
+              );
+            },
+          },
         ],
       }),
     }),
@@ -87,6 +104,7 @@ import { UsersModule } from './users/users.module';
     ReportsModule,
     NotionModule,
     RealtimeModule,
+    ChatGeneralModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

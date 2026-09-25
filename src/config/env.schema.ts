@@ -124,6 +124,39 @@ export const envSchema = z
       .int()
       .positive()
       .default(50),
+
+    /** ENG-171 — Chat General del semillero. */
+    CHAT_GENERAL_ENABLED: boolFromEnv,
+    CHAT_GENERAL_ROOM: z.string().min(1).default('general'),
+    CHAT_GENERAL_HISTORY_DEFAULT_LIMIT: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(30),
+    CHAT_GENERAL_HISTORY_MAX_LIMIT: z.coerce
+      .number()
+      .int()
+      .positive()
+      .max(100)
+      .default(100),
+    CHAT_GENERAL_MESSAGE_MAX_LENGTH: z.coerce
+      .number()
+      .int()
+      .positive()
+      .max(4000)
+      .default(2000),
+    CHAT_GENERAL_PRESENCE_TTL_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(60),
+    CHAT_GENERAL_HEARTBEAT_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(20),
+    /** Max POST /chat/general/messages per user per minute. */
+    CHAT_GENERAL_RATE_LIMIT: z.coerce.number().int().positive().default(20),
   })
   .superRefine((data, ctx) => {
     if (data.APP_ENV === 'production' && data.CORS_VERCEL_PREVIEW) {
@@ -131,6 +164,28 @@ export const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ['CORS_VERCEL_PREVIEW'],
         message: 'CORS_VERCEL_PREVIEW must be false when APP_ENV=production',
+      });
+    }
+    if (
+      data.CHAT_GENERAL_HEARTBEAT_SECONDS >=
+      data.CHAT_GENERAL_PRESENCE_TTL_SECONDS
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['CHAT_GENERAL_HEARTBEAT_SECONDS'],
+        message:
+          'CHAT_GENERAL_HEARTBEAT_SECONDS must be less than CHAT_GENERAL_PRESENCE_TTL_SECONDS',
+      });
+    }
+    if (
+      data.CHAT_GENERAL_HISTORY_DEFAULT_LIMIT >
+      data.CHAT_GENERAL_HISTORY_MAX_LIMIT
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['CHAT_GENERAL_HISTORY_DEFAULT_LIMIT'],
+        message:
+          'CHAT_GENERAL_HISTORY_DEFAULT_LIMIT must be <= CHAT_GENERAL_HISTORY_MAX_LIMIT',
       });
     }
   });

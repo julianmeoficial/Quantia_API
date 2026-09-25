@@ -3,6 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { buildAccessSignOptions } from '../auth/jwt-options';
 import type { EnvConfig } from '../config/env.schema';
+import { ChatGeneralPresenceService } from './chat-general-presence.service';
+import { GeneralRealtimeGateway } from './general-realtime.gateway';
 import { NotificationsRealtimeGateway } from './notifications-realtime.gateway';
 import { ProjectsRealtimeGateway } from './projects-realtime.gateway';
 import { RealtimeBridge } from './realtime-bridge.service';
@@ -35,10 +37,12 @@ import { RedisModule } from '../redis/redis.module';
   providers: [
     WsAuthService,
     WsConnectionLimitService,
+    ChatGeneralPresenceService,
     ProjectsRealtimeGateway,
     NotificationsRealtimeGateway,
+    GeneralRealtimeGateway,
     RealtimeBridge,
   ],
-  exports: [RealtimeCoreModule],
+  exports: [RealtimeCoreModule, ChatGeneralPresenceService],
 })
 export class RealtimeModule {}

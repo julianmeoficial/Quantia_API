@@ -8,6 +8,7 @@ Dashboards vivos (RF-12, RF-13). El gateway vive en el **mismo proceso** que la 
 |-----------|-----|--------|
 | `/projects` | Fanout por proyecto | `projectId` (UUID) tras `join` con membresía |
 | `/notifications` | Avisos por usuario | `user:<userId>` (auto-join al conectar) |
+| `/general` | Chat General del semillero (ENG-171) | Room fija `CHAT_GENERAL_ROOM` (default `general`), auto-join |
 
 ## Auth
 
@@ -25,6 +26,7 @@ Solo estos nombres llegan al frontend (`@quantia/contracts`):
 | `avance.registrado` | ProgressService create/update; Notion→DB sync de avances |
 | `proyecto.retrasado` | ProjectsService update cuando `status === DELAYED`; Notion sync |
 | `presupuesto.ejecucion-baja` | Emitter listo; callers de dominio en F5 |
+| `chat.general.*` | Ver [`chat-general.md`](./chat-general.md) |
 
 ## Fanout worker → clientes
 
