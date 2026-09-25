@@ -25,6 +25,8 @@ describe('Realtime Socket.io (e2e)', () => {
   let emitter: RealtimeEmitter;
   let baseUrl: string;
   let accessToken: string;
+  let observerToken: string;
+  let researcherId: string;
   let projectId: string;
   let redisAdapter: RedisIoAdapter;
 
@@ -94,6 +96,18 @@ describe('Realtime Socket.io (e2e)', () => {
         },
       },
     });
+    researcherId = researcher.id;
+
+    const observer = await prisma.user.create({
+      data: {
+        email: 'rt-observer@quantia.local',
+        fullName: 'RT Observer',
+        passwordHash: await argon2.hash(password),
+        userRoles: {
+          create: [{ roleId: byName[RoleName.INVESTIGADOR] }],
+        },
+      },
+    });
 
     const project = await prisma.project.create({
       data: {
@@ -110,6 +124,12 @@ describe('Realtime Socket.io (e2e)', () => {
       .send({ email: researcher.email, password })
       .expect(200);
     accessToken = (login.body as AuthTokensBody).accessToken;
+
+    const observerLogin = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ email: observer.email, password })
+      .expect(200);
+    observerToken = (observerLogin.body as AuthTokensBody).accessToken;
   }, 30000);
 
   afterAll(async () => {
@@ -294,6 +314,26 @@ describe('Realtime Socket.io (e2e)', () => {
     });
   });
 
+  it('rejects /general client with invalid JWT', async () => {
+    const socket = connectGeneral('not-a-valid-jwt');
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error('Expected rejection with invalid JWT')),
+        5000,
+      );
+      socket.on('connect_error', () => {
+        clearTimeout(timer);
+        socket.close();
+        resolve();
+      });
+      socket.on('disconnect', () => {
+        clearTimeout(timer);
+        socket.close();
+        resolve();
+      });
+    });
+  });
+
   it('sends presencia on /general join and fans out mensaje-creado', async () => {
     const a = connectGeneral(accessToken);
     const b = connectGeneral(accessToken);
@@ -350,8 +390,106 @@ describe('Realtime Socket.io (e2e)', () => {
     expect(eventB).toMatchObject({
       message: { content: 'desde bridge' },
     });
+    expect(JSON.stringify(eventA)).not.toMatch(/"email"/);
 
     a.close();
     b.close();
   }, 20000);
+
+  it('counts two tabs of the same user as one presence and disconnects on last socket', async () => {
+    const observer = connectGeneral(observerToken);
+    await waitConnected(observer);
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error('observer presencia timeout')),
+        8000,
+      );
+      observer.once(ChatGeneralEvent.PRESENCIA, () => {
+        clearTimeout(timer);
+        resolve();
+      });
+    });
+
+    const connectedEvents: unknown[] = [];
+    const disconnectedEvents: unknown[] = [];
+    observer.on(ChatGeneralEvent.USUARIO_CONECTADO, (p) =>
+      connectedEvents.push(p),
+    );
+    observer.on(ChatGeneralEvent.USUARIO_DESCONECTADO, (p) =>
+      disconnectedEvents.push(p),
+    );
+
+    const tab1 = connectGeneral(accessToken);
+    await waitConnected(tab1);
+    await new Promise((r) => setTimeout(r, 300));
+
+    expect(
+      connectedEvents.filter(
+        (e) => (e as { user?: { id?: string } }).user?.id === researcherId,
+      ),
+    ).toHaveLength(1);
+
+    const tab2 = connectGeneral(accessToken);
+    const presenciaTab2 = new Promise<{
+      users: Array<{ id: string }>;
+    }>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error('tab2 presencia timeout')),
+        8000,
+      );
+      tab2.once(ChatGeneralEvent.PRESENCIA, (body) => {
+        clearTimeout(timer);
+        resolve(body as { users: Array<{ id: string }> });
+      });
+    });
+    await waitConnected(tab2);
+    const snap = await presenciaTab2;
+    const researcherEntries = snap.users.filter((u) => u.id === researcherId);
+    expect(researcherEntries).toHaveLength(1);
+
+    await new Promise((r) => setTimeout(r, 300));
+    expect(
+      connectedEvents.filter(
+        (e) => (e as { user?: { id?: string } }).user?.id === researcherId,
+      ),
+    ).toHaveLength(1);
+
+    tab1.close();
+    await new Promise((r) => setTimeout(r, 400));
+    expect(
+      disconnectedEvents.filter(
+        (e) => (e as { userId?: string }).userId === researcherId,
+      ),
+    ).toHaveLength(0);
+
+    const lastDisconnect = new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error('usuario-desconectado timeout')),
+        8000,
+      );
+      observer.once(ChatGeneralEvent.USUARIO_DESCONECTADO, (body) => {
+        if ((body as { userId?: string }).userId === researcherId) {
+          clearTimeout(timer);
+          resolve();
+        }
+      });
+    });
+    tab2.close();
+    await lastDisconnect;
+
+    observer.close();
+  }, 25000);
+
+  it('keeps /notifications namespace accepting authenticated clients', async () => {
+    const socket = io(`${baseUrl}/notifications`, {
+      auth: { token: accessToken },
+      transports: ['websocket'],
+      forceNew: true,
+      reconnection: false,
+      timeout: 5000,
+    });
+    await waitConnected(socket);
+    expect(socket.connected).toBe(true);
+    socket.close();
+  });
 });

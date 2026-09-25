@@ -78,18 +78,36 @@ describe('ChatGeneralService', () => {
       deletedAt: null,
       author,
     };
+    const callOrder: string[] = [];
     const { service, repo, realtime } = buildService({
-      repo: { create: jest.fn().mockResolvedValue(row) },
+      repo: {
+        create: jest.fn().mockImplementation(() => {
+          callOrder.push('persist');
+          return Promise.resolve(row);
+        }),
+      },
+    });
+    realtime.emitChatGeneralMensajeCreado.mockImplementation(() => {
+      callOrder.push('emit');
+      return Promise.resolve();
     });
 
     const result = await service.create(user, { content: 'hola' });
 
     expect(result.created).toBe(true);
     expect(result.message.content).toBe('hola');
+    expect(result.message.author).toEqual({
+      id: user.id,
+      name: 'Ana',
+      avatarUrl: null,
+    });
+    expect(result.message).not.toHaveProperty('email');
+    expect(JSON.stringify(result.message)).not.toContain(user.email);
     expect(realtime.emitChatGeneralMensajeCreado).toHaveBeenCalledWith({
       message: result.message,
     });
     expect(repo.create).toHaveBeenCalled();
+    expect(callOrder).toEqual(['persist', 'emit']);
   });
 
   it('returns existing message on P2002 without re-emitting', async () => {

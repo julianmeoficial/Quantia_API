@@ -70,7 +70,7 @@ export class ChatGeneralPresenceService
       infer: true,
     });
     this.heartbeatTimer = setInterval(() => {
-      void this.tick();
+      void this.runMaintenanceTick();
     }, seconds * 1000);
     this.heartbeatTimer.unref?.();
   }
@@ -215,7 +215,10 @@ export class ChatGeneralPresenceService
       .map((u) => ({ id: u.id, name: u.fullName, avatarUrl: null }));
   }
 
-  private async tick(): Promise<void> {
+  /**
+   * Heartbeat + orphan reconciliation. Invoked by the interval and by unit tests.
+   */
+  async runMaintenanceTick(): Promise<void> {
     try {
       await this.heartbeatLocal();
       await this.reconcile();
