@@ -4,6 +4,11 @@ Canal **General autenticado** para todo el semillero: no es un chat público an�
 
 Registro de usuarios sigue siendo **solo Admin** (`POST /users`); este documento no cambia auth.
 
+Docs relacionados:
+
+- Cierre de fase / AC: [`chat-general-closure.md`](./chat-general-closure.md) (ENG-173)
+- Matriz de pruebas: [`chat-general-testing.md`](./chat-general-testing.md) (ENG-172)
+
 ## Decisiones de arquitectura
 
 ### Namespace `/general` + room fija `general`
@@ -30,9 +35,61 @@ Join/leave atómicos vía Lua. `usuario-conectado` solo en transición 0→1 soc
 
 Instantánea al conectar: `client.emit('chat.general.presencia', …)` **directo** al socket (no pasa por el bridge).
 
-### Persistencia
+## Flujo de datos
 
-Tabla Prisma `GeneralChatMessage` → `general_chat_messages` (migración `20260925200000_chat_general_messages`). Soft-delete `deletedAt`. Unique `(authorId, clientMessageId)` para idempotencia. RLS deny-by-default alineado a F7.
+```mermaid
+sequenceDiagram
+  participant Client
+  participant REST as REST /api/v1
+  participant GW as Gateway /general
+  participant Svc as ChatGeneralService
+  participant Emitter as RealtimeEmitter
+  participant Redis
+  participant Bridge as RealtimeBridge
+  participant Room as room "general"
+
+  Note over Client,GW: Conexión WS (JWT en handshake.auth.token)
+  Client->>GW: connect /general
+  GW->>Client: chat.general.presencia (directo al socket)
+  GW-->>Room: chat.general.usuario-conectado (vía Emitter→Redis→Bridge)
+
+  Note over Client,Svc: Mensaje (persistencia antes de fanout)
+  Client->>REST: POST /chat/general/messages
+  REST->>Svc: createMessage
+  Svc->>Svc: persist GeneralChatMessage
+  Svc->>Emitter: emit mensaje-creado
+  Emitter->>Redis: PUBLISH envelope
+  Redis->>Bridge: message
+  Bridge->>Room: chat.general.mensaje-creado
+  Room->>Client: fanout a sockets en room
+```
+
+Presencia multi-réplica y fanout de mensajes usan el mismo Redis; no hay estado de presencia en memoria del proceso.
+
+## Persistencia (Prisma)
+
+Tabla Prisma `GeneralChatMessage` → `general_chat_messages` (migración [`prisma/migrations/20260925200000_chat_general_messages`](../../prisma/migrations/20260925200000_chat_general_messages/migration.sql)). Soft-delete `deletedAt`. Unique `(authorId, clientMessageId)` para idempotencia. RLS deny-by-default alineado a F7.
+
+```prisma
+model GeneralChatMessage {
+  id              String    @id @default(uuid()) @db.Uuid
+  authorId        String    @map("author_id") @db.Uuid
+  content         String    @db.Text
+  clientMessageId String?   @map("client_message_id") @db.VarChar(64)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  author User @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@unique([authorId, clientMessageId])
+  @@index([createdAt, id])
+  @@index([authorId, createdAt])
+  @@map("general_chat_messages")
+}
+```
+
+Índices: `(createdAt, id)` para historial cursor; `(authorId, createdAt)` para consultas por autor.
 
 `avatarUrl` en contratos es siempre `null` hoy: `User` no tiene avatar y no se altera la tabla `users`.
 
@@ -68,6 +125,61 @@ Auth: JWT. Cualquier rol autenticado. Si `CHAT_GENERAL_ENABLED=false` → **404*
 
 No hay rol prohibido para estas rutas: **403 no aplica** (cualquier usuario activo del semillero). 401 sin token.
 
+### Ejemplo `POST /api/v1/chat/general/messages`
+
+Request:
+
+```json
+{
+  "content": "Hola semillero",
+  "clientMessageId": "client-msg-001"
+}
+```
+
+Response **201** (primera vez) / **200** (idempotente con el mismo `clientMessageId`):
+
+```json
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "content": "Hola semillero",
+  "clientMessageId": "client-msg-001",
+  "createdAt": "2026-09-25T20:00:00.000Z",
+  "author": {
+    "id": "11111111-2222-3333-4444-555555555555",
+    "name": "Ana Investigadora",
+    "avatarUrl": null
+  }
+}
+```
+
+Tras persistir, el servidor emite `chat.general.mensaje-creado` a la room `general` con `{ message: <mismo DTO> }`.
+
+### Ejemplo `GET /api/v1/chat/general/messages?limit=2`
+
+Response:
+
+```json
+{
+  "items": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "content": "Hola semillero",
+      "clientMessageId": "client-msg-001",
+      "createdAt": "2026-09-25T20:00:00.000Z",
+      "author": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "name": "Ana Investigadora",
+        "avatarUrl": null
+      }
+    }
+  ],
+  "nextCursor": "MjAyNi0wOS0yNVQyMDowMDowMC4wMDBafGExYjJjM2Q0LWU1ZjYtNzg5MC1hYmNkLWVmMTIzNDU2Nzg5MA",
+  "hasMore": true
+}
+```
+
+Página siguiente: `GET …/messages?cursor=<nextCursor>&limit=2`.
+
 ## Variables de entorno
 
 | Variable                             | Default   | Notas                    |
@@ -82,6 +194,17 @@ No hay rol prohibido para estas rutas: **403 no aplica** (cualquier usuario acti
 | `CHAT_GENERAL_RATE_LIMIT`            | `20`      | POST/min                 |
 
 `REDIS_URL`, `DATABASE_URL`, `DIRECT_URL` ya existían.
+
+## Despliegue local (Docker)
+
+```bash
+docker compose up -d postgres redis
+cp .env.example .env   # CHAT_GENERAL_ENABLED=true
+npx prisma migrate deploy
+npm run start:dev
+```
+
+Smoke local: `GET /api/v1/health`, `POST`/`GET` `/api/v1/chat/general/messages`, cliente Socket.io a `ws://localhost:<port>/general` con `auth.token` y `transports: ['websocket']`.
 
 ## Railway (staging)
 
@@ -100,11 +223,37 @@ No hay rol prohibido para estas rutas: **403 no aplica** (cualquier usuario acti
 4. Smoke: `GET /api/v1/health`, `POST`/`GET` chat, dos clientes `wss://…/general` (presencia + mensaje).
 5. Rollback rápido: `CHAT_GENERAL_ENABLED=false` (REST 404 + WS reject).
 
+Plantilla de evidencia smoke: [`evidence/chat-general-eng-172-staging.md`](./evidence/chat-general-eng-172-staging.md).
+
 ### Consideraciones
 
 - Claves de presencia efímeras: reinicio de Redis → presencia se reconstruye con heartbeats.
 - Subscriber del bridge: `retryStrategy` + resuscripción en `ready`.
 - Una pestaña con `/projects` + `/notifications` + `/general` ocupa **3** de `WS_MAX_CONNECTIONS_PER_USER` (default 5). Subir a 8 es opcional.
+
+## Observabilidad, rollback y limitaciones
+
+### Observabilidad
+
+- Gateway `/general` y `ChatGeneralPresenceService`: logs Nest (`Logger`) — warn en fallos de heartbeat/reconcile (`Presence tick failed`).
+- `RealtimeEmitter` / `RealtimeBridge`: mismo canal Redis y logging estructurado (Pino + `requestId` en HTTP) que el resto de F4.
+- No hay métricas Prometheus dedicadas al chat; fallos de presencia aparecen como warnings en logs de la API.
+
+### Rollback
+
+1. `CHAT_GENERAL_ENABLED=false` en Railway → REST responde **404**; gateway rechaza conexiones nuevas.
+2. No hace falta borrar la tabla: mensajes históricos quedan; el flag corta el producto.
+3. Migración es aditiva (`general_chat_messages`); no hay down automático en el runbook de staging.
+
+### Limitaciones conocidas
+
+| Límite | Detalle |
+|--------|---------|
+| `WS_MAX_CONNECTIONS_PER_USER` | Cada pestaña con `/general` cuenta 1 socket extra (además de `/projects` y `/notifications`). |
+| `avatarUrl` | Siempre `null` hasta que exista avatar en `User`. |
+| Paginación | Cursor (`createdAt\|id`) + `limit`, no `page`/`pageSize`. |
+| Feature flag | Con `CHAT_GENERAL_ENABLED=false`, el namespace no está disponible (404 / reject). |
+| Rate limit | `CHAT_GENERAL_RATE_LIMIT` POST/min por usuario (throttle Redis). |
 
 ## Módulos de código
 
@@ -113,4 +262,4 @@ No hay rol prohibido para estas rutas: **403 no aplica** (cualquier usuario acti
 - [`src/realtime/chat-general-presence.service.ts`](../../src/realtime/chat-general-presence.service.ts)
 - Emitter / bridge ampliados de forma aditiva
 
-Pruebas amplias: [ENG-172](./chat-general-testing.md) (matriz AC + e2e multi-réplica). Mínimas en ENG-171: unit + e2e REST/WS.
+Pruebas: [`chat-general-testing.md`](./chat-general-testing.md) (ENG-172). Cierre de fase: [`chat-general-closure.md`](./chat-general-closure.md) (ENG-173).

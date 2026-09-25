@@ -49,7 +49,7 @@ Related: [`handoff-security.md`](./handoff-security.md) · S1 threat model [`../
 | `GET` | `/projects/:projectId/reports/:reportId` | JWT | Status + signed URL when ready |
 | `POST` | `/webhooks/notion` | `@Public` | verification_token or HMAC `X-Notion-Signature` |
 | `POST` | `/chat/general/messages` | JWT | Any authenticated; 201/200 idempotent; gated by `CHAT_GENERAL_ENABLED` |
-| `GET` | `/chat/general/messages` | JWT | Cursor history (`cursor`/`limit`); see [`chat-general.md`](./chat-general.md) |
+| `GET` | `/chat/general/messages` | JWT | Cursor history (`cursor`/`limit`); see [`chat-general.md`](./chat-general.md) · closure [`chat-general-closure.md`](./chat-general-closure.md) |
 
 Swagger UI: only when `NODE_ENV !== 'production'` at `/api/docs`. Staging Railway uses `NODE_ENV=production` → use committed OpenAPI / Bruno.
 
