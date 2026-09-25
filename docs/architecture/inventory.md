@@ -48,6 +48,8 @@ Related: [`handoff-security.md`](./handoff-security.md) · S1 threat model [`../
 | `POST` | `/projects/:projectId/reports` | JWT | Enqueues BullMQ; 202 |
 | `GET` | `/projects/:projectId/reports/:reportId` | JWT | Status + signed URL when ready |
 | `POST` | `/webhooks/notion` | `@Public` | verification_token or HMAC `X-Notion-Signature` |
+| `POST` | `/chat/general/messages` | JWT | Any authenticated; 201/200 idempotent; gated by `CHAT_GENERAL_ENABLED` |
+| `GET` | `/chat/general/messages` | JWT | Cursor history (`cursor`/`limit`); see [`chat-general.md`](./chat-general.md) |
 
 Swagger UI: only when `NODE_ENV !== 'production'` at `/api/docs`. Staging Railway uses `NODE_ENV=production` → use committed OpenAPI / Bruno.
 
@@ -57,6 +59,7 @@ Swagger UI: only when `NODE_ENV !== 'production'` at `/api/docs`. Staging Railwa
 |-----------|------|-------|--------------------------|
 | `/projects` | JWT in `handshake.auth.token` | `projectId` (membership checked on `join`) | `tarea.actualizada`, `avance.registrado`, `proyecto.retrasado`, `presupuesto.ejecucion-baja` |
 | `/notifications` | JWT | `user:{userId}` | Same contract events (user-targeted) |
+| `/general` | JWT | fixed room `general` (auto-join) | `chat.general.presencia`, `chat.general.usuario-conectado`, `chat.general.usuario-desconectado`, `chat.general.mensaje-creado` |
 
 Client → server: join project room (`joinProjectRoom` contract). Invalid JWT → disconnect before join. Redis adapter for fan-out.
 

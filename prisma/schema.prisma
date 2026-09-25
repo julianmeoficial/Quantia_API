@@ -101,6 +101,7 @@ model User {
   uploadedDocuments   Document[]      @relation("DocumentUploader")
   requestedReports    Report[]        @relation("ReportRequester")
   auditLogs           AuditLog[]
+  generalChatMessages GeneralChatMessage[]
 
   @@map("users")
 }
@@ -394,4 +395,21 @@ model AuditLog {
   @@index([resource, resourceId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+model GeneralChatMessage {
+  id              String    @id @default(uuid()) @db.Uuid
+  authorId        String    @map("author_id") @db.Uuid
+  content         String    @db.Text
+  clientMessageId String?   @map("client_message_id") @db.VarChar(64)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  author User @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@unique([authorId, clientMessageId])
+  @@index([createdAt, id])
+  @@index([authorId, createdAt])
+  @@map("general_chat_messages")
 }

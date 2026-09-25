@@ -95,6 +95,15 @@ export default defineRailway(() => {
       SUPABASE_STORAGE_BUCKET_DOCUMENTS: preserve(),
       SUPABASE_STORAGE_BUCKET_REPORTS: preserve(),
       SUPABASE_URL: preserve(),
+      SECURITY_ALERT_401_403_THRESHOLD: preserve(),
+      CHAT_GENERAL_ENABLED: preserve(),
+      CHAT_GENERAL_ROOM: preserve(),
+      CHAT_GENERAL_HISTORY_DEFAULT_LIMIT: preserve(),
+      CHAT_GENERAL_HISTORY_MAX_LIMIT: preserve(),
+      CHAT_GENERAL_MESSAGE_MAX_LENGTH: preserve(),
+      CHAT_GENERAL_PRESENCE_TTL_SECONDS: preserve(),
+      CHAT_GENERAL_HEARTBEAT_SECONDS: preserve(),
+      CHAT_GENERAL_RATE_LIMIT: preserve(),
     },
   });
 
@@ -192,6 +201,14 @@ export default defineRailway(() => {
       SUPABASE_STORAGE_BUCKET_DOCUMENTS: preserve(),
       SUPABASE_STORAGE_BUCKET_REPORTS: preserve(),
       SUPABASE_URL: preserve(),
+      CHAT_GENERAL_ENABLED: preserve(),
+      CHAT_GENERAL_ROOM: preserve(),
+      CHAT_GENERAL_HISTORY_DEFAULT_LIMIT: preserve(),
+      CHAT_GENERAL_HISTORY_MAX_LIMIT: preserve(),
+      CHAT_GENERAL_MESSAGE_MAX_LENGTH: preserve(),
+      CHAT_GENERAL_PRESENCE_TTL_SECONDS: preserve(),
+      CHAT_GENERAL_HEARTBEAT_SECONDS: preserve(),
+      CHAT_GENERAL_RATE_LIMIT: preserve(),
     },
   });
 

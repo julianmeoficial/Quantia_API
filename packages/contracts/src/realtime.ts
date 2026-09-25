@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { chatGeneralEventSchema } from './chat-general';
 import { ProjectStatus } from './projects';
 import { taskPrioritySchema, taskStatusSchema } from './tasks';
 
@@ -21,6 +22,7 @@ export const realtimeEventSchema = z.enum([
 export const RealtimeNamespace = {
   PROJECTS: '/projects',
   NOTIFICATIONS: '/notifications',
+  GENERAL: '/general',
 } as const;
 export type RealtimeNamespace =
   (typeof RealtimeNamespace)[keyof typeof RealtimeNamespace];
@@ -82,10 +84,11 @@ export type PresupuestoEjecucionBajaPayload = z.infer<
 >;
 
 export const realtimeEnvelopeSchema = z.object({
-  event: realtimeEventSchema,
+  event: z.union([realtimeEventSchema, chatGeneralEventSchema]),
   namespace: z.enum([
     RealtimeNamespace.PROJECTS,
     RealtimeNamespace.NOTIFICATIONS,
+    RealtimeNamespace.GENERAL,
   ]),
   room: z.string().min(1),
   payload: z.unknown(),
