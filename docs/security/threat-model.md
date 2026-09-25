@@ -251,4 +251,4 @@ Owner for all rows: **Julián**. Phases map to Linear children of ENG-117.
 - [x] **Every High-severity threat** has a planned control in S2–S5 with Linear issue and owner:
   - High: T-01, T-02, T-03, T-04, T-05, T-06, T-08, T-09, T-10, T-11, T-12, T-13, T-14, T-15 → mapped above.
 
-**ENG-117 closure:** S1–S6 controls are implemented and verified on `main` (see [`eng-117-closure.md`](./eng-117-closure.md), [`verification.md`](./verification.md)). Pentesting P0 follows on staging only.
+**ENG-117 closure:** S1–S6 controls are implemented and verified on `main` (see [`eng-117-closure.md`](./eng-117-closure.md), [`verification.md`](./verification.md)). Pentesting P0–P6 is closed on the local lab ([`../pentesting/README.md`](../pentesting/README.md)).

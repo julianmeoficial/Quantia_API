@@ -47,4 +47,4 @@ Documented so Dependabot/reviewers know why overrides exist.
 - Checklist: [`asvs-checklist.md`](./asvs-checklist.md)
 - Staging URL, OpenAPI, Bruno, and **seed accounts** (admin / coord / 2 researchers): [`../architecture/handoff-security.md`](../architecture/handoff-security.md)
 
-**S6 EXIT:** this doc + ASVS checklist + green CI (including CodeQL) → ready for pentest **P0** on staging only.
+**S6 EXIT met.** Offensive verification P0–P6 ran against the **local** lab (console-only RoE) and is closed; see [`../pentesting/README.md`](../pentesting/README.md).

@@ -9,13 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Chat General del semillero (ENG-171 / ENG-172 / ENG-173):** namespace Socket.io `/general`, presencia Redis, historial paginado por cursor en Postgres, `POST`/`GET /api/v1/chat/general/messages`, flag `CHAT_GENERAL_ENABLED`, contracts 0.6.0. PRs [#41](https://github.com/julianmeoficial/Quantia_API/pull/41), [#42](https://github.com/julianmeoficial/Quantia_API/pull/42), [#43](https://github.com/julianmeoficial/Quantia_API/pull/43). Docs: [`docs/architecture/chat-general.md`](docs/architecture/chat-general.md), [`chat-general-testing.md`](docs/architecture/chat-general-testing.md), [`chat-general-closure.md`](docs/architecture/chat-general-closure.md).
+- **Pentesting P0–P6 (ENG-118):** programa local / consola cerrado; evidencia en [`docs/pentesting/`](docs/pentesting/README.md). PRs [#34](https://github.com/julianmeoficial/Quantia_API/pull/34)–[#40](https://github.com/julianmeoficial/Quantia_API/pull/40). Smoke no ofensivo en Railway documentado en P6.
 - **Security S1–S6 (ENG-117):** threat model STRIDE ([`docs/security/threat-model.md`](docs/security/threat-model.md), PR [#11](https://github.com/julianmeoficial/Quantia_API/pull/11)); S2 auth hardening ([`auth.md`](docs/architecture/auth.md), [#12](https://github.com/julianmeoficial/Quantia_API/pull/12)); S3 data ([`data-hardening.md`](docs/security/data-hardening.md), [#14](https://github.com/julianmeoficial/Quantia_API/pull/14)); S4 infra ([`infra-hardening.md`](docs/security/infra-hardening.md), [#16](https://github.com/julianmeoficial/Quantia_API/pull/16)); S5 resilience ([`resilience.md`](docs/security/resilience.md), [#17](https://github.com/julianmeoficial/Quantia_API/pull/17)); S6 verification — `audit:ci`, Dependabot, ESLint security, CodeQL SARIF gate, ASVS checklist ([#18](https://github.com/julianmeoficial/Quantia_API/pull/18)).
 - **ENG-117 closure checkout:** [`docs/security/eng-117-closure.md`](docs/security/eng-117-closure.md) (acceptance matrix, deferred debt, pentest handoff).
 
 ### Changed
 
+- README y docs de estado alineados con Chat General entregado y pentest P0–P6 cerrado (laboratorio local; sin ofensiva contra staging).
 - **Fixes_1 / F7 debt:** Session pooler `:5432` es la política staging oficial de `DIRECT_URL` (ENG-156); smoke Notion → `sync_events` `SYNCED` documentado (ENG-159); Railway Config as Code (`railway.toml`) migrado a Infrastructure as Code [`.railway/railway.ts`](.railway/railway.ts) (ENG-158).
 - Staging API unificada al servicio Railway **`Quantia_API`** (deploy desde GitHub `main`): dominio `https://quantiaapi-production.up.railway.app`. Nueva suscripción Notion + `NOTION_WEBHOOK_SECRET` rotado; docs/Bruno actualizados. Servicio `api` (`api-production-18cd…`) queda legacy/deprecar. ENG-157 cerrado.
+
+### Fixed
+
+- **QX-P5-001** (Medium): race en refresh concurrente; rotación atómica con `tryConsumeRefresh` (`updateMany` where `revokedAt IS NULL`). Retest PASS (consola + e2e). Evidencia: [`docs/pentesting/evidence/p6/QX-P5-001-retest.md`](docs/pentesting/evidence/p6/QX-P5-001-retest.md).
 
 ### Added
 

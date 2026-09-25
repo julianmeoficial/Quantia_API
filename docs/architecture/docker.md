@@ -18,7 +18,7 @@ Quantia API no es un solo contenedor. En local hay **cinco roles**:
 | **redis**    | Infra (imagen oficial)     | No (efímero en F0)      | Bus de colas/caché; el worker y (F4) Socket.io lo usarán |
 | **migrate**  | App (build propio)         | No — **efímero**        | Aplica migraciones Prisma **antes** de servir tráfico    |
 | **api**      | App (build propio)         | Sí mientras desarrollas | HTTP NestJS: `/api/v1/`*                                 |
-| **worker**   | App (misma imagen que api) | Sí mientras desarrollas | Proceso aparte: trabajo asíncrono (stub en F0)           |
+| **worker**   | App (misma imagen que api) | Sí mientras desarrollas | Proceso aparte: sync Notion + reportes PDF/Excel (BullMQ) |
 
 
 La API y el worker **comparten la misma imagen** (`target: runner`) y cambian solo el
@@ -318,7 +318,7 @@ Hoy Compose carga `[.env.example](../../.env.example)` vía `env_file` (desarrol
 | ------------------- | ------------------------- | ------------------------------------------------------------ |
 | `DATABASE_URL`      | api, worker, migrate      | Conexión Prisma (en Compose: host `postgres`)                |
 | `DIRECT_URL`        | migrate (y schema Prisma) | Conexión directa; en local = misma URL; en Supabase ≠ pooler |
-| `REDIS_URL`         | api, worker               | Health + stub del worker                                     |
+| `REDIS_URL`         | api, worker               | Health, BullMQ, Socket.io adapter / bridge                   |
 | `NODE_ENV` / `PORT` | api (y validación global) | Entorno y puerto HTTP                                        |
 
 

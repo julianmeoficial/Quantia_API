@@ -94,8 +94,8 @@ Swagger UI is off when `NODE_ENV=production` (staging); use `openapi/openapi.jso
 
 ## Freeze
 
-Do **not** add domain features after F7 merge. Track debt in Linear as blocking / non-blocking. Pentest follows [`.cursor/rules/pentesting.md`](../../.cursor/rules/pentesting.md) on staging only.
+Do **not** add domain features after F7 merge. Track debt in Linear as blocking / non-blocking. Pentest RoE (local lab only): [`.cursor/rules/pentesting.md`](../../.cursor/rules/pentesting.md). Program closed: [`../pentesting/README.md`](../pentesting/README.md).
 
-## S6 EXIT → pentest P0
+## S6 EXIT → pentest P0 (completed)
 
-Hardening phases S1–S6 are complete when CI gates in [`../security/verification.md`](../security/verification.md) are green and the ASVS checklist is filled. Formal program closure: [`../security/eng-117-closure.md`](../security/eng-117-closure.md). Use the seed accounts above plus OpenAPI/Bruno as P0 inputs; test **staging only**.
+Hardening phases S1–S6 are complete (CI gates in [`../security/verification.md`](../security/verification.md) green; ASVS checklist filled). Formal program closure: [`../security/eng-117-closure.md`](../security/eng-117-closure.md). Seed accounts above plus OpenAPI/Bruno were P0 inputs; offensive testing stayed on the **local** lab. P0–P6 closed — see [`../pentesting/p6-report.md`](../pentesting/p6-report.md).

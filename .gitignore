@@ -12,5 +12,8 @@ coverage
 !.env.test
 .railway-token
 
+# Borradores locales (informes / capturas) — no versionar
+docs/local/
+
 packages/contracts/dist
 *.tsbuildinfo

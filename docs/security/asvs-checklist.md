@@ -111,4 +111,4 @@ Evidence points to code, tests, or CI.
 - [x] Staging seed accounts documented for P0 ([`handoff-security.md`](../architecture/handoff-security.md))
 - [x] Pipeline gates documented in [`verification.md`](./verification.md)
 
-**ASVS L1–L2 (API subset): complete for S6 EXIT.** Remaining verification is offensive (P0–P6) on staging.
+**ASVS L1–L2 (API subset): complete for S6 EXIT.** Offensive verification P0–P6 is **closed** (local lab / console); see [`../pentesting/README.md`](../pentesting/README.md).

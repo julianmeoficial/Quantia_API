@@ -27,7 +27,7 @@ Invariant: the API is the **only** component that talks to Supabase, Notion and 
 | Component | What it is | Why it exists |
 |-----------|------------|---------------|
 | **API container** | NestJS HTTP server | Serves versioned REST under `/api/v1` |
-| **Worker container** | Same image, different entrypoint | Ready for BullMQ; today only validates env and pings Redis |
+| **Worker container** | Same image, different entrypoint | BullMQ consumers: Notion sync + PDF/Excel reports |
 | **PostgreSQL** | System of record | Local `postgres:16`; production uses Supabase |
 | **Redis** | Cache / queues / fanout | Local `redis:7`; production uses managed Redis on Railway |
 | **Migrate** | Ephemeral Compose service | Runs `prisma migrate deploy` before api/worker start |
@@ -69,14 +69,14 @@ flowchart TB
 
   API -->|Prisma ping| PG
   API -->|PING| RD
-  WRK -->|connect stub| RD
+  WRK -->|BullMQ + Redis| RD
 ```
 
 ---
 
 ## Package tree
 
-Current repository layout after F5:
+Current repository layout (post F7 + Chat General + pentest):
 
 ```text
 quantia-api/
@@ -85,13 +85,14 @@ quantia-api/
 ├── .github/workflows/ci.yml · codeql.yml · dependabot.yml
 ├── packages/contracts/src/
 │   ├── auth · projects · tasks · progress · realtime · notion
-│   ├── budget · documents · reports · index
+│   ├── budget · documents · reports · chat-general · index
 ├── prisma/
-│   ├── schema.prisma                     # Domain + Notion mirrors + Budget/Docs/Reports/Audit
+│   ├── schema.prisma                     # Domain + Notion mirrors + Budget/Docs/Reports/Audit + Chat
 │   ├── seed.ts
 │   └── migrations/
 │       ├── …auth / projects / notion_sync_events /
-│       └── 20260918020000_budget_documents_reports_audit/
+│       ├── 20260918020000_budget_documents_reports_audit/
+│       └── 20260925200000_chat_general_messages/
 ├── src/
 │   ├── main.ts · worker.ts · app.module.ts · worker.module.ts
 │   ├── config/ · database/ · redis/ · health/
@@ -99,13 +100,15 @@ quantia-api/
 │   ├── projects/ · tasks/ · progress/
 │   ├── notion/ · realtime/
 │   ├── storage/ · audit/ · budget/ · documents/ · reports/   # F5
+│   ├── chat-general/                                         # ENG-171
 │   └── common/
-├── test/                                 # auth · domain · notion · realtime · f5 · security-s2…s5
+├── test/                                 # auth · domain · notion · realtime · f5 · chat-general · security-s2…s5
 ├── docs/architecture/
 │   ├── overview · docker · auth · domain · notion · realtime · chat-general*
 │   └── budget-storage-reports.md · handoff-security · inventory
 │       (* chat-general.md · testing · closure ENG-173)
 ├── docs/security/                        # S1–S6 evidence + eng-117-closure
+├── docs/pentesting/                      # P0–P6 (ENG-118) — closed
 ├── Dockerfile · docker-compose.yml · .env.example
 ├── README.md · CHANGELOG.md
 ```
@@ -118,11 +121,12 @@ Modules by phase:
 | F2 ✓ | `src/projects/`, `src/tasks/`, `src/progress/` | Core research workflow |
 | F3 ✓ | `src/notion/`, jobs in worker | Bidirectional Notion ↔ Postgres sync |
 | F4 ✓ | `src/realtime/` | Socket.io gateway (`/projects`, `/notifications`, `/general`), Redis adapter + bridge |
-| Chat General | `src/chat-general/` + presence | ENG-171/172/173 — [`chat-general.md`](./chat-general.md) · [`chat-general-closure.md`](./chat-general-closure.md) |
+| Chat General ✓ | `src/chat-general/` + presence | ENG-171/172/173 — [`chat-general.md`](./chat-general.md) · [`chat-general-closure.md`](./chat-general-closure.md) |
 | F5 ✓ | `src/budget/`, `src/documents/`, `src/reports/`, `src/storage/`, `src/audit/` | Financial execution (Postgres only), Storage, PDF/Excel |
 | F6 ✓ | `.railway/railway.ts` (IaC), logger (`nestjs-pino`), `docs/architecture/deploy.md` | Railway staging, JSON logs + requestId, Notion HTTPS |
 | F7 ✓ | `openapi/`, `bruno/`, seed F5, RLS, `inventory.md` / `handoff-security.md` | Handoff to Security (ENG-126); functional freeze |
-| S1–S6 ✓ | `docs/security/*`, security e2e, CI gates (gitleaks, audit:ci, CodeQL, Trivy OS) | Hardening complete (ENG-117); pentest P0 on staging — [`.cursor/rules/pentesting.md`](../../.cursor/rules/pentesting.md) |
+| S1–S6 ✓ | `docs/security/*`, security e2e, CI gates (gitleaks, audit:ci, CodeQL, Trivy OS) | Hardening complete (ENG-117) |
+| P0–P6 ✓ | `docs/pentesting/*` | Local console pentest closed (ENG-118) — [`docs/pentesting/README.md`](../pentesting/README.md) |
 
 ---
 
@@ -133,9 +137,9 @@ Modules by phase:
 | Path | Responsibility | Relates to |
 |------|----------------|------------|
 | [`src/main.ts`](../../src/main.ts) | Boots the Nest HTTP app, sets global prefix `api`, enables URI versioning (`/api/v1`), reads `PORT` from validated config | `AppModule` |
-| [`src/worker.ts`](../../src/worker.ts) | Boots an application context (no HTTP), pings Redis, logs `Worker ready`, handles SIGINT/SIGTERM | `WorkerModule`, Redis |
+| [`src/worker.ts`](../../src/worker.ts) | Boots an application context (no HTTP); runs BullMQ processors for Notion sync and reports; SIGINT/SIGTERM | `WorkerModule`, Redis |
 | [`src/app.module.ts`](../../src/app.module.ts) | Wires Config + Database + Redis + Health for the API process | Every HTTP module |
-| [`src/worker.module.ts`](../../src/worker.module.ts) | Minimal DI graph for the worker (Config + Database + Redis) | Same infra as API, no controllers |
+| [`src/worker.module.ts`](../../src/worker.module.ts) | Worker DI: Config + Database + Redis + Notion sync + reports processors | Same infra as API, no controllers |
 
 ### `src/config/` — fail-fast configuration
 
@@ -158,8 +162,9 @@ only for migrations (`prisma migrate deploy`), matching Supabase’s 6543 / 5432
 | `prisma.service.ts` | Extends `PrismaClient`; connects on module init, disconnects on destroy |
 | `database.module.ts` | Global module exporting `PrismaService` |
 
-In F0 the schema only has `BootstrapMeta` so migrations and health checks work.
-Domain tables arrive in F1+.
+Historically (F0 only) the schema had a bootstrap placeholder so migrations and health
+checks worked. Domain tables arrived in F1+; current schema includes auth, projects,
+tasks, progress, Notion mirrors, budget/documents/reports/audit, and Chat General.
 
 ### `src/redis/` — shared infrastructure bus
 

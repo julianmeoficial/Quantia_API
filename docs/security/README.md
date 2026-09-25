@@ -31,4 +31,4 @@ Hardening evidence for the Quantia API after the F7 functional freeze. Phases fo
 | `Security_S6` | ENG-132 | SAST / SCA / ASVS checklist |
 | `Secuirty_Checkout` | ENG-117 | Final verification + doc sync (no new domain scope) |
 
-Cursor rules: `.cursor/rules/security-hardening.md` (S1–S6), `.cursor/rules/pentesting.md` (P0–P6 after S6).
+Cursor rules: `.cursor/rules/security-hardening.md` (S1–S6), `.cursor/rules/pentesting.md` (P0–P6). Pentest program closed: [`../pentesting/README.md`](../pentesting/README.md).

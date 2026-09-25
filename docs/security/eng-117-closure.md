@@ -5,8 +5,8 @@
 | Linear | [ENG-117](https://linear.app/brevku/issue/ENG-117/seguridad-quantia-seguridad-de-la-api-s1-s6) |
 | Parent milestone | Seguridad de la API |
 | Checkout branch | `Secuirty_Checkout` (formal verification + doc sync) |
-| Status | **Closed for pentest** — controls implemented; CI gates active on `main` |
-| Next phase | Pentesting P0–P6 ([`.cursor/rules/pentesting.md`](../../.cursor/rules/pentesting.md)) on **staging only** |
+| Status | **Closed** — controls implemented; CI gates active on `main` |
+| Next phase (done) | Pentesting P0–P6 closed on **local lab** ([`../pentesting/README.md`](../pentesting/README.md); RoE: [`.cursor/rules/pentesting.md`](../../.cursor/rules/pentesting.md)) |
 
 Functional scope: harden the F7-frozen NestJS API (no new domain features). Framework: OWASP API Top 10 (2023) + ASVS L1–L2 (API subset).
 
