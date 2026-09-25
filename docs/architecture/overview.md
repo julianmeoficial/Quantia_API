@@ -102,8 +102,9 @@ quantia-api/
 │   └── common/
 ├── test/                                 # auth · domain · notion · realtime · f5 · security-s2…s5
 ├── docs/architecture/
-│   ├── overview · docker · auth · domain · notion · realtime · chat-general
+│   ├── overview · docker · auth · domain · notion · realtime · chat-general*
 │   └── budget-storage-reports.md · handoff-security · inventory
+│       (* chat-general.md · testing · closure ENG-173)
 ├── docs/security/                        # S1–S6 evidence + eng-117-closure
 ├── Dockerfile · docker-compose.yml · .env.example
 ├── README.md · CHANGELOG.md
@@ -117,7 +118,7 @@ Modules by phase:
 | F2 ✓ | `src/projects/`, `src/tasks/`, `src/progress/` | Core research workflow |
 | F3 ✓ | `src/notion/`, jobs in worker | Bidirectional Notion ↔ Postgres sync |
 | F4 ✓ | `src/realtime/` | Socket.io gateway (`/projects`, `/notifications`, `/general`), Redis adapter + bridge |
-| Chat General | `src/chat-general/` + presence | ENG-171 — see [`chat-general.md`](./chat-general.md) |
+| Chat General | `src/chat-general/` + presence | ENG-171/172/173 — [`chat-general.md`](./chat-general.md) · [`chat-general-closure.md`](./chat-general-closure.md) |
 | F5 ✓ | `src/budget/`, `src/documents/`, `src/reports/`, `src/storage/`, `src/audit/` | Financial execution (Postgres only), Storage, PDF/Excel |
 | F6 ✓ | `.railway/railway.ts` (IaC), logger (`nestjs-pino`), `docs/architecture/deploy.md` | Railway staging, JSON logs + requestId, Notion HTTPS |
 | F7 ✓ | `openapi/`, `bruno/`, seed F5, RLS, `inventory.md` / `handoff-security.md` | Handoff to Security (ENG-126); functional freeze |
@@ -270,6 +271,7 @@ Use this table to know where to look (and what to update) when changing the API:
 | Understand Notion sync (F3) | [`docs/architecture/notion.md`](./notion.md) |
 | Understand Socket.io realtime (F4) | [`docs/architecture/realtime.md`](./realtime.md) |
 | Chat General del semillero (ENG-171) | [`docs/architecture/chat-general.md`](./chat-general.md) |
+| Chat General — cierre / AC (ENG-173) | [`docs/architecture/chat-general-closure.md`](./chat-general-closure.md) |
 | Understand budget, Storage and reports (F5) | [`docs/architecture/budget-storage-reports.md`](./budget-storage-reports.md) |
 | Understand Railway deploy and observability (F6) | [`docs/architecture/deploy.md`](./deploy.md) |
 | Quick start for contributors | [`README.md`](../../README.md) |

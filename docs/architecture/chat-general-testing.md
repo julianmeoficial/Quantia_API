@@ -1,6 +1,6 @@
 # Chat General — Testing matrix (ENG-172)
 
-Suite de aceptación del Chat General del semillero. Complementa [`chat-general.md`](./chat-general.md). La documentación de cierre de fase (Notion §5) vive en ENG-173.
+Suite de aceptación del Chat General del semillero. Complementa [`chat-general.md`](./chat-general.md). Cierre de fase y matriz pasa/no pasa: [`chat-general-closure.md`](./chat-general-closure.md) (ENG-173).
 
 ## Cómo correr
 
