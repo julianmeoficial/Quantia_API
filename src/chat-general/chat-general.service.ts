@@ -70,7 +70,7 @@ export class ChatGeneralService {
         error.code === 'P2002' &&
         dto.clientMessageId
       ) {
-        const existing = await this.repo.findByAuthorAndClientMessageId(
+        const existing = await this.repo.findBySenderAndClientMessageId(
           user.id,
           dto.clientMessageId,
         );

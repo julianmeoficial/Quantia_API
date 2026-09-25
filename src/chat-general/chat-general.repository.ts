@@ -27,7 +27,7 @@ export class ChatGeneralRepository {
     });
   }
 
-  findByAuthorAndClientMessageId(
+  findBySenderAndClientMessageId(
     authorId: string,
     clientMessageId: string,
   ): Promise<GeneralChatMessageWithAuthor | null> {

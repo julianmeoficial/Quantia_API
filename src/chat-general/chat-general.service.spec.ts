@@ -23,7 +23,7 @@ describe('ChatGeneralService', () => {
   }) {
     const repo = {
       create: jest.fn(),
-      findByAuthorAndClientMessageId: jest.fn(),
+      findBySenderAndClientMessageId: jest.fn(),
       findHistory: jest.fn(),
       findActiveUsersByIds: jest.fn(),
       ...overrides?.repo,
@@ -111,7 +111,7 @@ describe('ChatGeneralService', () => {
             clientVersion: 'test',
           }),
         ),
-        findByAuthorAndClientMessageId: jest.fn().mockResolvedValue(existing),
+        findBySenderAndClientMessageId: jest.fn().mockResolvedValue(existing),
       },
     });
 
