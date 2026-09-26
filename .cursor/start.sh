@@ -14,6 +14,6 @@ for _ in $(seq 1 30); do
 done
 
 echo "==> Ensuring Redis is up"
-redis-cli ping >/dev/null 2>&1 || sudo redis-server --daemonize yes --port 6379
+redis-cli ping >/dev/null 2>&1 || sudo redis-server --daemonize yes --port 6379 --dir /var/lib/redis
 
 echo "==> Infrastructure ready (Postgres :5432, Redis :6379)"

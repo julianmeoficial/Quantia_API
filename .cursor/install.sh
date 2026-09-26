@@ -24,7 +24,7 @@ for _ in $(seq 1 30); do
 done
 
 echo "==> [3/6] Start Redis"
-redis-cli ping >/dev/null 2>&1 || sudo redis-server --daemonize yes --port 6379
+redis-cli ping >/dev/null 2>&1 || sudo redis-server --daemonize yes --port 6379 --dir /var/lib/redis
 
 echo "==> [4/6] Ensure quantia role + database"
 sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='quantia'" | grep -q 1 \
