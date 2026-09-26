@@ -17,11 +17,19 @@ if ! command -v psql >/dev/null 2>&1 || ! command -v redis-server >/dev/null 2>&
 fi
 
 echo "==> [2/6] Start PostgreSQL cluster"
-sudo pg_ctlcluster "${PG_VERSION}" main start 2>/dev/null || true
-for _ in $(seq 1 30); do
-  sudo -u postgres pg_isready -q && break
-  sleep 1
-done
+PG_DATA="/var/lib/postgresql/${PG_VERSION}/main"
+start_postgres() {
+  sudo pg_ctlcluster "${PG_VERSION}" main start 2>/dev/null || true
+  for _ in $(seq 1 30); do
+    sudo -u postgres pg_isready -q && return 0
+    sleep 1
+  done
+  return 1
+}
+if ! start_postgres; then
+  sudo rm -f "${PG_DATA}/postmaster.pid"
+  start_postgres || { echo "ERROR: PostgreSQL failed to start"; exit 1; }
+fi
 
 echo "==> [3/6] Start Redis"
 redis-cli ping >/dev/null 2>&1 || sudo redis-server --daemonize yes --port 6379 --dir /var/lib/redis

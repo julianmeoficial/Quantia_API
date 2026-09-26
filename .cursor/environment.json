@@ -5,11 +5,11 @@
   "terminals": [
     {
       "name": "api",
-      "command": "npm run start:dev"
+      "command": "bash .cursor/start.sh && npm run start:dev"
     },
     {
       "name": "worker",
-      "command": "npm run worker:dev"
+      "command": "bash .cursor/start.sh && npm run worker:dev"
     }
   ]
 }
