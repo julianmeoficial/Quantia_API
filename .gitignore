@@ -17,3 +17,6 @@ docs/local/
 
 packages/contracts/dist
 *.tsbuildinfo
+
+# Redis dump (local dev)
+dump.rdb
