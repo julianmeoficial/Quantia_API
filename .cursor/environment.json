@@ -1,0 +1,15 @@
+{
+  "name": "Quantia API",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "terminals": [
+    {
+      "name": "api",
+      "command": "npm run start:dev"
+    },
+    {
+      "name": "worker",
+      "command": "npm run worker:dev"
+    }
+  ]
+}
