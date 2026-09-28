@@ -57,7 +57,7 @@
     "@nestjs/throttler": "^6.7.0",
     "@nestjs/websockets": "^11.2.5",
     "@notionhq/client": "^5.26.0",
-    "@prisma/client": "^6.16.1",
+    "@prisma/client": "^7.10.0",
     "@quantia/contracts": "0.0.1",
     "@socket.io/redis-adapter": "^8.3.0",
     "@supabase/supabase-js": "^2.116.0",
