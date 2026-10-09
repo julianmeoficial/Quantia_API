@@ -117,6 +117,7 @@ describe('Security S5 resilience (e2e)', () => {
     await prisma.project.deleteMany();
     await prisma.refreshToken.deleteMany();
     await prisma.userRole.deleteMany();
+    await prisma.generalChatMessage.deleteMany();
     await prisma.user.deleteMany();
 
     const roles = await prisma.role.findMany();
