@@ -45,6 +45,28 @@ export class UsersRepository {
     return { total, users };
   }
 
+  async searchDirectory(q: string, page: number, pageSize: number) {
+    const skip = (page - 1) * pageSize;
+    const where: Prisma.UserWhereInput = {
+      isActive: true,
+      OR: [
+        { fullName: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+      ],
+    };
+    const [total, users] = await this.prisma.$transaction([
+      this.prisma.user.count({ where }),
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take: pageSize,
+        orderBy: [{ fullName: 'asc' }, { id: 'asc' }],
+        select: { id: true, fullName: true, email: true },
+      }),
+    ]);
+    return { total, users };
+  }
+
   async create(data: {
     email: string;
     passwordHash: string;

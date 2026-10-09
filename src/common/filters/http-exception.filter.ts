@@ -7,10 +7,16 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
+import { HttpHeader } from '@quantia/contracts';
 import { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
 import { MulterError } from 'multer';
+import { TooManyRequestsException } from '../exceptions/too-many-requests.exception';
 import { SecurityMetricsService } from '../security-metrics.service';
+
+const RETRY_AFTER_LOWER = HttpHeader.RETRY_AFTER.toLowerCase();
+const RETRY_AFTER_PREFIX = `${RETRY_AFTER_LOWER}-`;
+const TOO_MANY_REQUESTS: number = HttpStatus.TOO_MANY_REQUESTS;
 
 @Catch()
 @Injectable()
@@ -35,6 +41,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     void this.securityMetrics.recordHttpStatus(mapped.status);
+
+    if (mapped.status === TOO_MANY_REQUESTS) {
+      this.applyRetryAfter(exception, response);
+    }
 
     response.status(mapped.status).json({
       statusCode: mapped.status,
@@ -102,6 +112,42 @@ export class HttpExceptionFilter implements ExceptionFilter {
       status: HttpStatus.INTERNAL_SERVER_ERROR,
       message: 'Internal server error',
     };
+  }
+
+  /**
+   * @nestjs/throttler only writes plain `Retry-After` for the `default`
+   * limiter; named limiters write `Retry-After-<name>`. Browsers can read a
+   * single, CORS-exposed `Retry-After`, so collapse them to the longest wait.
+   */
+  private applyRetryAfter(exception: unknown, response: Response): void {
+    const candidates: number[] = [];
+
+    if (exception instanceof TooManyRequestsException) {
+      candidates.push(exception.retryAfterSeconds);
+    }
+
+    const headers =
+      typeof response.getHeaders === 'function' ? response.getHeaders() : {};
+    for (const [name, value] of Object.entries(headers)) {
+      const lower = name.toLowerCase();
+      if (
+        lower !== RETRY_AFTER_LOWER &&
+        !lower.startsWith(RETRY_AFTER_PREFIX)
+      ) {
+        continue;
+      }
+      const seconds = Number(Array.isArray(value) ? value[0] : value);
+      if (Number.isFinite(seconds) && seconds > 0) {
+        candidates.push(Math.ceil(seconds));
+      }
+    }
+
+    if (candidates.length > 0) {
+      response.setHeader(
+        HttpHeader.RETRY_AFTER,
+        String(Math.max(...candidates)),
+      );
+    }
   }
 
   private mapPrismaError(error: Prisma.PrismaClientKnownRequestError): {

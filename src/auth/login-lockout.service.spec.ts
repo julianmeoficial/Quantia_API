@@ -57,7 +57,14 @@ describe('LoginLockoutService', () => {
       service.assertNotLocked('user@test.com', '1.1.1.1'),
     ).rejects.toMatchObject({
       status: HttpStatus.TOO_MANY_REQUESTS,
+      retryAfterSeconds: 30,
     });
+  });
+
+  it('does not throw when no lock is active', async () => {
+    await expect(
+      service.assertNotLocked('user@test.com', '1.1.1.1'),
+    ).resolves.toBeUndefined();
   });
 
   it('locks after first threshold of failures', async () => {

@@ -66,9 +66,12 @@ La plantilla completa (issuer/audience JWT, Notion webhook, Supabase Storage, th
 | `POST` | `/api/v1/auth/refresh` | Público |
 | `POST` | `/api/v1/auth/logout` | Público (body: `refreshToken`) |
 | `GET` | `/api/v1/users/me` | JWT |
+| `GET` | `/api/v1/users/directory?q=` | JWT + rol `ADMINISTRADOR` o `COORDINADOR` (búsqueda mínima para añadir miembros) |
 | CRUD | `/api/v1/users` | JWT + rol `ADMINISTRADOR` |
 
 Roles: `INVESTIGADOR`, `COORDINADOR`, `ADMINISTRADOR`. Passwords con argon2. Detalle: [`docs/architecture/auth.md`](docs/architecture/auth.md).
+
+Todo `429` incluye `Retry-After` (segundos), expuesto por CORS para que el navegador pueda leerlo.
 
 Swagger (no producción): `http://localhost:3000/api/docs`
 
@@ -157,7 +160,7 @@ src/
   health/       GET /api/v1/health (@Public)
   worker.ts     Entry del worker (notion-sync + reports)
 packages/
-  contracts/    @quantia/contracts 0.6.0 (auth, domain, realtime, notion, budget, documents, reports, chat-general)
+  contracts/    @quantia/contracts 0.7.0 (auth, users, http, domain, realtime, notion, budget, documents, reports, chat-general)
 prisma/         Schema y migraciones
 test/           E2E
 docs/           Documentación técnica

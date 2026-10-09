@@ -1,0 +1,21 @@
+meta {
+  name: User Directory
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/users/directory?q=ana&page=1&pageSize=20
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  Requires ADMINISTRADOR or COORDINADOR.
+  q is mandatory (2-100 chars, matches full name or e-mail). Active users only.
+  Returns { data: [{ id, fullName, email }], meta }.
+}

@@ -11,11 +11,18 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { RoleName } from '@quantia/contracts';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../common/interfaces/jwt-payload.interface';
+import { PaginatedUserDirectoryResponseDto } from './dto/paginated-user-directory-response.dto';
+import { UserDirectoryQueryDto } from './dto/user-directory-query.dto';
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
 import { PaginationQueryDto } from '../common/dto/pagination.dto';
 import { UsersService } from './users.service';
@@ -37,6 +44,20 @@ export class UsersController {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
     return this.usersService.findAll(page, pageSize);
+  }
+
+  @Get('directory')
+  @Roles(RoleName.ADMINISTRADOR, RoleName.COORDINADOR)
+  @ApiOperation({
+    summary: 'Search active users to add as project members',
+    description:
+      'Returns only id, full name and e-mail of active users. Requires a search term (min 2 chars); never lists the whole user base.',
+  })
+  @ApiOkResponse({ type: PaginatedUserDirectoryResponseDto })
+  directory(
+    @Query() query: UserDirectoryQueryDto,
+  ): Promise<PaginatedUserDirectoryResponseDto> {
+    return this.usersService.searchDirectory(query);
   }
 
   @Get(':id')

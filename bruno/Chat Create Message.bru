@@ -1,0 +1,16 @@
+meta {
+  name: Chat Create Message
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/chat/general/messages
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  forwardAuthorizationHeader: false
+}
