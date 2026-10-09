@@ -6,7 +6,13 @@ import {
 import { RoleName } from '@quantia/contracts';
 import { SyncEntityType } from '@prisma/client';
 import { hashPassword } from '../auth/password.util';
+import {
+  buildPaginatedResult,
+  type PaginatedResult,
+} from '../common/dto/pagination.dto';
 import { NotionSyncEnqueueService } from '../notion/notion-sync-enqueue.service';
+import { UserDirectoryEntryDto } from './dto/user-directory-entry.dto';
+import { UserDirectoryQueryDto } from './dto/user-directory-query.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
 import { UserWithRoles, UsersRepository } from './users.repository';
@@ -61,6 +67,26 @@ export class UsersService {
         totalPages: Math.ceil(total / pageSize) || 0,
       },
     };
+  }
+
+  async searchDirectory(
+    query: UserDirectoryQueryDto,
+  ): Promise<PaginatedResult<UserDirectoryEntryDto>> {
+    const { total, users } = await this.usersRepository.searchDirectory(
+      query.q,
+      query.page,
+      query.pageSize,
+    );
+    return buildPaginatedResult(
+      users.map((user) => ({
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+      })),
+      query.page,
+      query.pageSize,
+      total,
+    );
   }
 
   async findById(id: string): Promise<UserResponseDto> {
