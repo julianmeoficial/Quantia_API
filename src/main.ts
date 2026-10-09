@@ -12,7 +12,7 @@ import {
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
-import { createCorsOriginDelegate, parseCorsOrigins } from './common/cors.util';
+import { createHttpCorsOptions, parseCorsOrigins } from './common/cors.util';
 import { assertJsonDepth } from './common/middleware/json-depth.util';
 import { EnvConfig } from './config/env.schema';
 import { RedisIoAdapter } from './realtime/redis-io.adapter';
@@ -108,10 +108,7 @@ async function bootstrap(): Promise<void> {
     infer: true,
   });
 
-  app.enableCors({
-    origin: createCorsOriginDelegate(corsOrigins, allowVercelPreview),
-    credentials: true,
-  });
+  app.enableCors(createHttpCorsOptions(corsOrigins, allowVercelPreview));
 
   const redisIoAdapter = new RedisIoAdapter(app);
   await redisIoAdapter.connectToRedis();

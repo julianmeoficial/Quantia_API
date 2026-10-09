@@ -1,11 +1,31 @@
 import {
   VERCEL_PREVIEW_ORIGIN_RE,
+  createHttpCorsOptions,
   isAllowedCorsOrigin,
   parseCorsOrigins,
 } from './cors.util';
 
 describe('cors.util', () => {
   const allowlist = ['http://localhost:3000', 'https://quantia.example.com'];
+
+  it('builds HTTP CORS options that expose Retry-After with credentials', () => {
+    const options = createHttpCorsOptions(allowlist, false);
+    expect(options.credentials).toBe(true);
+    expect(options.exposedHeaders).toEqual(['Retry-After']);
+    expect(typeof options.origin).toBe('function');
+  });
+
+  it('HTTP CORS options keep the allowlist (never wildcard)', () => {
+    const options = createHttpCorsOptions(allowlist, false);
+    const origin = options.origin as (
+      origin: string | undefined,
+      cb: (err: Error | null, allow?: boolean) => void,
+    ) => void;
+    const results: Array<boolean | undefined> = [];
+    origin('https://quantia.example.com', (_e, allow) => results.push(allow));
+    origin('https://evil.example.com', (_e, allow) => results.push(allow));
+    expect(results).toEqual([true, false]);
+  });
 
   it('parses CSV origins', () => {
     expect(parseCorsOrigins(' http://a.com , https://b.com ')).toEqual([

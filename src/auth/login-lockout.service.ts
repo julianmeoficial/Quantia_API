@@ -1,4 +1,5 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { TooManyRequestsException } from '../common/exceptions/too-many-requests.exception';
 import { RedisService } from '../redis/redis.service';
 
 /** Progressive lockout thresholds (failures → lock duration seconds). */
@@ -37,10 +38,7 @@ export class LoginLockoutService {
       this.lockKey(this.normalizeEmail(email), ip),
     );
     if (remaining > 0) {
-      throw new HttpException(
-        'Too many attempts',
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
+      throw new TooManyRequestsException('Too many attempts', remaining);
     }
   }
 

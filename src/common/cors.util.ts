@@ -1,3 +1,6 @@
+import type { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
+import { CORS_EXPOSED_HEADERS } from '@quantia/contracts';
+
 /**
  * Anchored Vercel preview hosts only: https://<subdomain>.vercel.app
  * Rejects evil.com, vercel.app without subdomain, and http.
@@ -31,6 +34,17 @@ export function isAllowedCorsOrigin(
 }
 
 export type CorsOriginCallback = (err: Error | null, allow?: boolean) => void;
+
+export function createHttpCorsOptions(
+  allowlist: string[],
+  allowVercelPreview: boolean,
+): CorsOptions {
+  return {
+    origin: createCorsOriginDelegate(allowlist, allowVercelPreview),
+    credentials: true,
+    exposedHeaders: [...CORS_EXPOSED_HEADERS],
+  };
+}
 
 export function createCorsOriginDelegate(
   allowlist: string[],

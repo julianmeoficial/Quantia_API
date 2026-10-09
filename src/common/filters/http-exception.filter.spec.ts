@@ -1,6 +1,8 @@
-import { HttpStatus } from '@nestjs/common';
+import { HttpStatus, NotFoundException } from '@nestjs/common';
+import { ThrottlerException } from '@nestjs/throttler';
 import { Prisma } from '@prisma/client';
 import { MulterError } from 'multer';
+import { TooManyRequestsException } from '../exceptions/too-many-requests.exception';
 import { SecurityMetricsService } from '../security-metrics.service';
 import { HttpExceptionFilter } from './http-exception.filter';
 
@@ -59,6 +61,72 @@ describe('HttpExceptionFilter', () => {
     expect(status).toBe(HttpStatus.CONFLICT);
     expect(body.message).toBe('Resource already exists');
     expect(JSON.stringify(body)).not.toContain('users_email_key');
+  });
+
+  describe('429 Retry-After normalisation', () => {
+    function run429(
+      exception: unknown,
+      preset: Record<string, string> = {},
+    ): { status: number; headers: Record<string, string> } {
+      let statusCode = 0;
+      const headers = new Map<string, string>(Object.entries(preset));
+      const response = {
+        getHeaders: () => Object.fromEntries(headers),
+        setHeader: (name: string, value: string) => {
+          headers.set(name, value);
+        },
+        status: (code: number) => {
+          statusCode = code;
+          return { json: () => undefined };
+        },
+      };
+      const host = {
+        switchToHttp: () => ({
+          getResponse: () => response,
+          getRequest: () => ({ method: 'POST', url: '/api/v1/auth/login' }),
+        }),
+      };
+      filter.catch(exception, host as never);
+      return { status: statusCode, headers: Object.fromEntries(headers) };
+    }
+
+    it('uses retryAfterSeconds from TooManyRequestsException', () => {
+      const { status, headers } = run429(
+        new TooManyRequestsException('Too many attempts', 42),
+      );
+      expect(status).toBe(HttpStatus.TOO_MANY_REQUESTS);
+      expect(headers['Retry-After']).toBe('42');
+    });
+
+    it('collapses named throttler headers into plain Retry-After', () => {
+      const { headers } = run429(new ThrottlerException(), {
+        'retry-after-auth': '17',
+      });
+      expect(headers['Retry-After']).toBe('17');
+    });
+
+    it('keeps the longest wait when several limiters fired', () => {
+      const { headers } = run429(new ThrottlerException(), {
+        'retry-after': '5',
+        'retry-after-reports': '50',
+      });
+      expect(headers['Retry-After']).toBe('50');
+    });
+
+    it('ignores non-numeric values and does not set the header', () => {
+      const { headers } = run429(new ThrottlerException(), {
+        'retry-after-auth': 'soon',
+      });
+      expect(headers['Retry-After']).toBeUndefined();
+    });
+
+    it('does not touch Retry-After for non-429 errors', () => {
+      const { status, headers } = run429(new NotFoundException(), {
+        'retry-after-auth': '9',
+      });
+      expect(status).toBe(HttpStatus.NOT_FOUND);
+      expect(headers['Retry-After']).toBeUndefined();
+    });
   });
 
   it('maps unknown errors to generic 500', () => {
