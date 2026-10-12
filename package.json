@@ -97,7 +97,7 @@
     "eslint-plugin-prettier": "^5.2.2",
     "eslint-plugin-security": "^3.0.1",
     "file-type": "^16.5.4",
-    "globals": "^17.0.0",
+    "globals": "^17.13.0",
     "jest": "^30.0.0",
     "prettier": "^3.4.2",
     "prisma": "^6.16.1",
