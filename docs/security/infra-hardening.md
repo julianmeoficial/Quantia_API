@@ -52,7 +52,7 @@ Notion does **not** re-expose the token after verify. To rotate:
 
 [`Dockerfile`](../../Dockerfile):
 
-- Base `node:22-alpine`
+- Base **`node:22.23.4-alpine`** (pin exacto; no `node:22-alpine`). El [security release del 21 oct 2026](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases) marca cualquier Node 22 anterior a v22.23.4 como vulnerable: Brotli OOB write / RCE (CVE-2026-111497), bypass de hostname TLS (CVE-2026-106069, CVE-2026-106072) en conexiones salientes a Supabase / Notion / Redis, y `dns.resolve` con NUL (CVE-2026-105482). Fijar el patch level evita que un rebuild en Railway herede un runtime sin parche mientras la etiqueta flotante `22` no apunta aún a la imagen corregida.
 - Final stage `USER node` (non-root)
 - `ENV NODE_ENV=production`
 - No shell debugging tools added in the runner stage

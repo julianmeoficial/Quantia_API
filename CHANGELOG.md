@@ -5,12 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Released]
 
 ### Added
 
 - **Directorio de usuarios para coordinadores (backlog deuda técnica):** `GET /api/v1/users/directory?q=&page=&pageSize=` para `ADMINISTRADOR` y `COORDINADOR`. Exige término de búsqueda (2–100 caracteres, nombre o e-mail sin distinguir mayúsculas), solo usuarios activos, devuelve únicamente `id`, `fullName`, `email`; `pageSize` máx. 50. Contracts 0.7.0 (`userDirectoryQuerySchema`, `paginatedUserDirectoryResponseSchema`).
-- **`Retry-After` legible por el navegador:** todo `429` (throttlers `default`, `auth`, `reports`, `chat-general` y bloqueo progresivo de login) responde con `Retry-After` en segundos; CORS lo publica vía `exposedHeaders`. Constantes `HttpHeader` / `CORS_EXPOSED_HEADERS` en contracts.
+- `Retry-After` **legible por el navegador:** todo `429` (throttlers `default`, `auth`, `reports`, `chat-general` y bloqueo progresivo de login) responde con `Retry-After` en segundos; CORS lo publica vía `exposedHeaders`. Constantes `HttpHeader` / `CORS_EXPOSED_HEADERS` en contracts.
 - **Chat General del semillero (ENG-171 / ENG-172 / ENG-173):** namespace Socket.io `/general`, presencia Redis, historial paginado por cursor en Postgres, `POST`/`GET /api/v1/chat/general/messages`, flag `CHAT_GENERAL_ENABLED`, contracts 0.6.0. PRs [#41](https://github.com/julianmeoficial/Quantia_API/pull/41), [#42](https://github.com/julianmeoficial/Quantia_API/pull/42), [#43](https://github.com/julianmeoficial/Quantia_API/pull/43). Docs: [`docs/architecture/chat-general.md`](docs/architecture/chat-general.md), [`chat-general-testing.md`](docs/architecture/chat-general-testing.md), [`chat-general-closure.md`](docs/architecture/chat-general-closure.md).
 - **Pentesting P0–P6 (ENG-118):** programa local / consola cerrado; evidencia en [`docs/pentesting/`](docs/pentesting/README.md). PRs [#34](https://github.com/julianmeoficial/Quantia_API/pull/34)–[#40](https://github.com/julianmeoficial/Quantia_API/pull/40). Smoke no ofensivo en Railway documentado en P6.
 - **Security S1–S6 (ENG-117):** threat model STRIDE ([`docs/security/threat-model.md`](docs/security/threat-model.md), PR [#11](https://github.com/julianmeoficial/Quantia_API/pull/11)); S2 auth hardening ([`auth.md`](docs/architecture/auth.md), [#12](https://github.com/julianmeoficial/Quantia_API/pull/12)); S3 data ([`data-hardening.md`](docs/security/data-hardening.md), [#14](https://github.com/julianmeoficial/Quantia_API/pull/14)); S4 infra ([`infra-hardening.md`](docs/security/infra-hardening.md), [#16](https://github.com/julianmeoficial/Quantia_API/pull/16)); S5 resilience ([`resilience.md`](docs/security/resilience.md), [#17](https://github.com/julianmeoficial/Quantia_API/pull/17)); S6 verification — `audit:ci`, Dependabot, ESLint security, CodeQL SARIF gate, ASVS checklist ([#18](https://github.com/julianmeoficial/Quantia_API/pull/18)).
@@ -20,10 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - README y docs de estado alineados con Chat General entregado y pentest P0–P6 cerrado (laboratorio local; sin ofensiva contra staging).
 - **Fixes_1 / F7 debt:** Session pooler `:5432` es la política staging oficial de `DIRECT_URL` (ENG-156); smoke Notion → `sync_events` `SYNCED` documentado (ENG-159); Railway Config as Code (`railway.toml`) migrado a Infrastructure as Code [`.railway/railway.ts`](.railway/railway.ts) (ENG-158).
-- Staging API unificada al servicio Railway **`Quantia_API`** (deploy desde GitHub `main`): dominio `https://quantiaapi-production.up.railway.app`. Nueva suscripción Notion + `NOTION_WEBHOOK_SECRET` rotado; docs/Bruno actualizados. Servicio `api` (`api-production-18cd…`) queda legacy/deprecar. ENG-157 cerrado.
+- Staging API unificada al servicio Railway `Quantia_API` (deploy desde GitHub `main`): dominio `https://quantiaapi-production.up.railway.app`. Nueva suscripción Notion + `NOTION_WEBHOOK_SECRET` rotado; docs/Bruno actualizados. Servicio `api` (`api-production-18cd…`) queda legacy/deprecar. ENG-157 cerrado.
 
 ### Fixed
 
+- **Node.js 22.23.4 (security release 2026-10-21):** el `Dockerfile` deja de usar la etiqueta flotante `node:22-alpine` y fija `node:22.23.4-alpine`. Cualquier 22.x anterior a v22.23.4 queda afectada por fallas altas del [aviso oficial](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases): escritura fuera de límites en el decodificador Brotli (CVE-2026-111497, RCE), bypass de validación de hostname en certificados TLS (CVE-2026-106069 / CVE-2026-106072; toca salidas a Supabase, Notion y Redis) y `dns.resolve` con NUL (CVE-2026-105482). El pin evita que Railway vuelva a construir sobre un patch level vulnerable mientras la etiqueta `22` no se actualiza. Docs: [`docs/architecture/docker.md`](docs/architecture/docker.md), [`docs/security/infra-hardening.md`](docs/security/infra-hardening.md).
 - **QX-P5-001** (Medium): race en refresh concurrente; rotación atómica con `tryConsumeRefresh` (`updateMany` where `revokedAt IS NULL`). Retest PASS (consola + e2e). Evidencia: [`docs/pentesting/evidence/p6/QX-P5-001-retest.md`](docs/pentesting/evidence/p6/QX-P5-001-retest.md).
 
 ### Added
