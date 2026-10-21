@@ -56,8 +56,10 @@ EXIT: no endpoint returns a field outside its response DTO; no file is reachable
   `gitleaks` in CI, including history. Documented rotation of the Notion token and `JWT_SECRET`.
 - The Supabase `service_role` key lives ONLY in the API container. Row Level Security
   enabled as a second barrier.
-- Container: non-root user, `node:22-alpine`, no debug tooling in production,
-  `NODE_ENV=production`, image scanned with `trivy`.
+- Container: non-root user, pinned `node:22.23.4-alpine` (not floating `node:22`),
+  no debug tooling in production, `NODE_ENV=production`, image scanned with `trivy`.
+  Pin required after the 2026-10-21 Node security release (Brotli RCE, TLS hostname
+  bypass, dns.resolve NUL); see `docs/security/infra-hardening.md`.
 - `helmet()` active, `X-Powered-By` disabled, HSTS on, strict CORS allowlist
   (production domain + Vercel preview pattern). Credentials allowed only where required.
 - `staging` and `production` fully isolated: different databases, secrets and Redis.

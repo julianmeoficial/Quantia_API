@@ -15,7 +15,9 @@ BullMQ worker. Users are Researchers, Coordinators and Administrators.
 - Storage: Supabase Storage, private buckets, signed short-lived URLs only.
 - Validation: class-validator + class-transformer DTOs; shared types in
   `@quantia/contracts` (TS types + Zod schemas).
-- Packaging: multi-stage Dockerfile on `node:22-alpine`, non-root user, HEALTHCHECK.
+- Packaging: multi-stage Dockerfile on pinned `node:22.23.4-alpine` (not floating
+  `node:22`), non-root user, HEALTHCHECK. Bump the pin when Node publishes a newer
+  22.x security release; never regress to an unpinned major tag.
 - Deploy: Railway (Hobby plan) for api + worker + Redis; Postgres on Supabase;
   frontend on Vercel. Render is the only approved fallback.
 - Tests: Jest + Supertest.

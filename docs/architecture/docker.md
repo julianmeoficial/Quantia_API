@@ -1,16 +1,15 @@
 # Quantia API — Contenerización con Docker
 
-Este documento explica **qué ves en Docker Desktop**, qué hace cada **imagen** y cada
-**contenedor**, cómo se construyen a partir del `Dockerfile`, y en qué orden Compose
-los arranca. Complementa `[overview.md](./overview.md)` (arquitectura de código) y
-`[../development/local-setup.md](../development/local-setup.md)` (cómo levantarlo).
+Este documento explica ¿**qué ves en Docker Desktop?**, ¿qué hace cada **imagen** y cada  
+**contenedor?**, ¿cómo se construyen a partir del `Dockerfile`?, y ¿en qué orden Compose  
+los arranca?. Complementa `[overview.md](./overview.md)` (arquitectura de código) y
+`[../development/local-setup.md](../development/local-setup.md)` (¿cómo levantarlo?).
 
 ---
 
 ## Idea central
 
 Quantia API no es un solo contenedor. En local hay **cinco roles**:
-
 
 | Rol          | Tipo                       | Persistente             | Función en Quantia                                       |
 | ------------ | -------------------------- | ----------------------- | -------------------------------------------------------- |
@@ -20,19 +19,15 @@ Quantia API no es un solo contenedor. En local hay **cinco roles**:
 | **api**      | App (build propio)         | Sí mientras desarrollas | HTTP NestJS: `/api/v1/`*                                 |
 | **worker**   | App (misma imagen que api) | Sí mientras desarrollas | Proceso aparte: sync Notion + reportes PDF/Excel (BullMQ) |
 
-
 La API y el worker **comparten la misma imagen** (`target: runner`) y cambian solo el
 comando de arranque. Eso cumple la invariante de Quantia: nada lento en el hilo HTTP;
 el worker es el proceso correcto para sync Notion, PDF, correo, etc. (F3–F5).
 
 ---
 
-
-
 ## Lo que está en Docker Desktop (Images)
 
 Tras `docker compose up --build` (y builds sueltos) suele aparecer algo como:
-
 
 | Nombre en Desktop     | Tag              | Origen                                               | ¿Para qué existe?                                     |
 | --------------------- | ---------------- | ---------------------------------------------------- | ----------------------------------------------------- |
@@ -42,9 +37,6 @@ Tras `docker compose up --build` (y builds sueltos) suele aparecer algo como:
 | `quantia_api-worker`  | `latest`         | Build Compose → stage `runner` (mismo Dockerfile)    | Misma capa de runtime; Compose le pone otro `command` |
 | `quantia_api-migrate` | `latest`         | Build Compose → stage `migrate`                      | Imagen con Prisma CLI + schema para migrar            |
 | `quantia-api`         | `local` (u otro) | Build manual (`docker build -t quantia-api:local .`) | Misma familia `runner`; etiqueta de prueba/CI local   |
-
-
-
 
 ### ¿Por qué `api` y `worker` pesan ~igual y `migrate` suele pesar más?
 
@@ -91,27 +83,19 @@ flowchart TB
   RDImg --> CtrRd[Contenedor redis]
 ```
 
-
-
 ---
 
-
-
 ## Imagen vs contenedor
-
 
 | Concepto       | Analogía                                    | En Quantia                                     |
 | -------------- | ------------------------------------------- | ---------------------------------------------- |
 | **Imagen**     | Plantilla / snapshot inmutable              | `quantia_api-api:latest`, `postgres:16-alpine` |
 | **Contenedor** | Proceso en ejecución a partir de una imagen | `quantia_api-api-1`, `quantia_api-postgres-1`  |
 
-
 Compose crea **un contenedor por servicio**. El servicio `migrate` termina y el
 contenedor queda en estado **Exited (0)**; eso es correcto (no debe quedarse vivo).
 
 ---
-
-
 
 ## Stages del Dockerfile
 
@@ -119,7 +103,7 @@ Archivo: `[Dockerfile](../../Dockerfile)`.
 
 ```mermaid
 flowchart LR
-  base["base<br/>node:22-alpine"]
+  base["base<br/>node:22.23.4-alpine"]
   deps["deps<br/>npm ci"]
   build["build<br/>nest build + prune"]
   migrate["migrate<br/>CMD prisma migrate deploy"]
@@ -132,17 +116,15 @@ flowchart LR
   build --> runner
 ```
 
-
-
+La etapa `base` usa `node:22.23.4-alpine`, no la etiqueta flotante `node:22-alpine`. Tras el [security release de Node.js del 21 oct 2026](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases), cualquier 22.x anterior a v22.23.4 queda afectada (Brotli RCE, bypass de hostname TLS en salidas HTTPS, `dns.resolve` con NUL). API, worker y migrate heredan de `base`, así que un solo pin cubre los tres. Railway reconstruye desde este `Dockerfile` al llegar el cambio a `main`.
 
 | Stage     | ¿Qué hace?                                                      | ¿Quién lo usa?                                                |
 | --------- | --------------------------------------------------------------- | ------------------------------------------------------------- |
-| `base`    | `WORKDIR /app` sobre Node 22 Alpine                             | Base común                                                    |
+| `base`    | `WORKDIR /app` sobre Node **22.23.4** Alpine (pin de seguridad) | Base común                                                    |
 | `deps`    | Copia manifests + `prisma/`, ejecuta `npm ci`                   | `build` y `migrate`                                           |
 | `build`   | Copia el código, `npm run build`, `npm prune --omit=dev`        | Alimenta `runner` (y schema a `migrate`)                      |
 | `migrate` | Conserva deps de desarrollo (Prisma CLI) + schema               | Servicio Compose `migrate`                                    |
 | `runner`  | Runtime: `dist/`, prod `node_modules`, `USER node`, HEALTHCHECK | Servicios `api` y `worker`; default si haces `docker build .` |
-
 
 **Importante:** el stage **final** del archivo es `runner`. Así un `docker build` o el
 CI (`docker build -t quantia-api:ci .`) generan la imagen de API, no la de migraciones.
@@ -150,14 +132,11 @@ Compose fija `target: migrate` o `target: runner` explícitamente.
 
 ---
 
-
-
 ## Servicios de Compose — función de cada contenedor
 
 Archivo: `[docker-compose.yml](../../docker-compose.yml)`.
 
 ### 1. `postgres`
-
 
 |                   |                                                                                |
 | ----------------- | ------------------------------------------------------------------------------ |
@@ -168,11 +147,7 @@ Archivo: `[docker-compose.yml](../../docker-compose.yml)`.
 | **Acción**        | Almacena el esquema Prisma (hoy `bootstrap_meta`; luego users, projects, etc.) |
 | **En producción** | Sustituido por Supabase (pooler 6543 / direct 5432) — F6                       |
 
-
-
-
 ### 2. `redis`
-
 
 |                   |                                                                               |
 | ----------------- | ----------------------------------------------------------------------------- |
@@ -182,11 +157,7 @@ Archivo: `[docker-compose.yml](../../docker-compose.yml)`.
 | **Acción en F0**  | El health de la API hace `PING`; el worker se conecta y loguea `Worker ready` |
 | **Acción futura** | Colas BullMQ (F3+), adaptador Socket.io (F4), rate limit (fase Seguridad)     |
 
-
-
-
 ### 3. `migrate` (efímero)
-
 
 |                    |                                                                           |
 | ------------------ | ------------------------------------------------------------------------- |
@@ -197,11 +168,9 @@ Archivo: `[docker-compose.yml](../../docker-compose.yml)`.
 | **Acción**         | Aplica SQL versionado en `prisma/migrations/` al sistema de registro      |
 | **Por qué existe** | Garantiza que `api`/`worker` no arranquen contra un schema desactualizado |
 
-
 Si en Desktop ves el contenedor `migrate` **parado** con exit 0, el flujo funcionó.
 
 ### 4. `api`
-
 
 |                 |                                                                    |
 | --------------- | ------------------------------------------------------------------ |
@@ -212,11 +181,7 @@ Si en Desktop ves el contenedor `migrate` **parado** con exit 0, el flujo funcio
 | **Depende de**  | postgres + redis healthy **y** migrate `completed_successfully`    |
 | **Acción**      | Expone la API REST versionada; en F0 el endpoint crítico es health |
 
-
-
-
 ### 5. `worker`
-
 
 |                   |                                                      |
 | ----------------- | ---------------------------------------------------- |
@@ -227,10 +192,7 @@ Si en Desktop ves el contenedor `migrate` **parado** con exit 0, el flujo funcio
 | **Acción en F0**  | Valida env, hace ping a Redis, queda vivo            |
 | **Acción futura** | Procesar jobs BullMQ fuera del hilo HTTP             |
 
-
 ---
-
-
 
 ## Flujo de arranque (`docker compose up`)
 
@@ -254,8 +216,6 @@ sequenceDiagram
   API-->>DC: HEALTHCHECK /api/v1/health 200
 ```
 
-
-
 Orden lógico:
 
 1. Infraestructura lista (healthchecks).
@@ -265,8 +225,6 @@ Orden lógico:
 Sin ese orden, la API podría levantar contra tablas inexistentes o Redis caído.
 
 ---
-
-
 
 ## Red y puertos (vista desde Mac)
 
@@ -291,9 +249,6 @@ flowchart LR
   MIG -->|"postgres:5432"| PG
 ```
 
-
-
-
 | Desde                 | Hostname / URL                        | Motivo                                          |
 | --------------------- | ------------------------------------- | ----------------------------------------------- |
 | Contenedores entre sí | `postgres`, `redis`                   | DNS interno de Compose (como en `.env.example`) |
@@ -301,18 +256,14 @@ flowchart LR
 | MAC → Postgres        | `localhost:5433`                      | Mapeo host (ver `.env.test`)                    |
 | MAC → Redis           | `localhost:6379`                      | Mapeo host                                      |
 
-
 Si corres Prisma **en el host** (`npx prisma migrate deploy`), debes usar URLs con
 `localhost:5433`, no `postgres:5432`. Dentro de Compose, `postgres` es el nombre correcto.
 
 ---
 
-
-
 ## Variables de entorno en contenedores
 
 Hoy Compose carga `[.env.example](../../.env.example)` vía `env_file` (desarrollo F0).
-
 
 | Variable            | ¿Quién la necesita?       | Uso                                                          |
 | ------------------- | ------------------------- | ------------------------------------------------------------ |
@@ -321,13 +272,10 @@ Hoy Compose carga `[.env.example](../../.env.example)` vía `env_file` (desarrol
 | `REDIS_URL`         | api, worker               | Health, BullMQ, Socket.io adapter / bridge                   |
 | `NODE_ENV` / `PORT` | api (y validación global) | Entorno y puerto HTTP                                        |
 
-
 La app **no arranca** si faltan (validación Zod en `src/config/`). Eso también aplica
 dentro del contenedor: un env incompleto tumba el proceso a propósito.
 
 ---
-
-
 
 ## HEALTHCHECK: ¿qué está midiendo Docker?
 
@@ -340,8 +288,6 @@ Ese endpoint **no es un “pong” vacío**: comprueba Postgres (`SELECT 1`) y R
 En F6 (Railway) ese mismo patrón alimenta rollback si la imagen nueva no responde.
 
 ---
-
-
 
 ## Comandos útiles
 
@@ -372,10 +318,7 @@ docker compose down -v
 
 ---
 
-
-
 ## Relación con el criterio de salida F0 (ENG-121)
-
 
 | Criterio                      | ¿Cómo lo demuestra Docker?                      |
 | ----------------------------- | ----------------------------------------------- |
@@ -385,13 +328,9 @@ docker compose down -v
 | Misma imagen api/worker       | Ambos `target: runner`, distinto `command`      |
 | CI puede construir la imagen  | `docker build` usa stage final `runner`         |
 
-
 ---
 
-
-
 ## Mapa de documentación
-
 
 | Documento                                                        | Contenido                                         |
 | ---------------------------------------------------------------- | ------------------------------------------------- |
