@@ -37,9 +37,9 @@ Branch convention: `Security_S4`.
 Notion does **not** re-expose the token after verify. To rotate:
 
 1. Delete the webhook subscription in Notion.
-2. Create a new subscription pointing at the HTTPS webhook URL.
-3. Complete Verify using the `verification_token` from the API **HTTP response** (not logs).
-4. Set `NOTION_WEBHOOK_SECRET` to that same value on Railway; redeploy API + worker.
+2. Create a new subscription pointing at the HTTPS webhook URL on **Quantia_API**.
+3. Complete Verify with the handshake `verification_token`. Railway Network/Deploy Logs do **not** show the body (T-08). Temporary rotation aid: after Resend, Console → `cat /tmp/notion-verify-token.txt` (remove that write from [`NotionWebhookController`](../../src/notion/notion-webhook.controller.ts) after verify).
+4. Set `NOTION_WEBHOOK_SECRET` to that same value on Railway (`Quantia_API` + `worker`); redeploy.
 
 ## Supabase `service_role` + RLS
 
@@ -86,7 +86,7 @@ Swagger mounts only when `NODE_ENV !== 'production'` (local/dev/test). Deployed 
 
 [`NotionWebhookController`](../../src/notion/notion-webhook.controller.ts):
 
-1. Handshake: returns `verification_token` in JSON; logs **without** the token value.
+1. Handshake: returns `verification_token` in JSON; logs **without** the token value (path hint only during temporary rotation aid).
 2. HMAC-SHA256 of raw body vs `X-Notion-Signature`; `timingSafeEqual`.
 3. Timestamp must be within `NOTION_WEBHOOK_MAX_SKEW_SECONDS` (default 300).
 4. Redis `SET NX` on `notion:webhook:replay:<sha256(signature)>` with TTL = skew — replays → **401**.

@@ -197,7 +197,7 @@ GitHub Actions en cada PR y push a `main`:
 | [`docs/architecture/docker.md`](docs/architecture/docker.md) | Imágenes y contenedores Docker, stages, flujo de arranque |
 | [`docs/architecture/auth.md`](docs/architecture/auth.md) | Auth JWT, roles, refresh rotativo (F1 / ENG-119) |
 | [`docs/architecture/domain.md`](docs/architecture/domain.md) | Proyectos, tareas, avances y pertenencia (F2 / ENG-122) |
-| [`docs/architecture/notion.md`](docs/architecture/notion.md) | Sync Notion ↔ Postgres. Webhook staging: Railway HTTPS; `NOTION_WEBHOOK_SECRET` = `verification_token` del handshake (no el Access Token). |
+| [`docs/architecture/notion.md`](docs/architecture/notion.md) | Sync Notion ↔ Postgres. Webhook staging: Railway HTTPS; `NOTION_WEBHOOK_SECRET` = `verification_token` del handshake (no el Access Token). Tras Resend: Console → `cat /tmp/notion-verify-token.txt` (ayuda temporal de rotación). |
 | [`docs/architecture/realtime.md`](docs/architecture/realtime.md) | Socket.io namespaces, JWT handshake, rooms, Redis bridge (F4 / ENG-123) |
 | [`docs/architecture/chat-general.md`](docs/architecture/chat-general.md) | Chat General del semillero (`/general`, presencia Redis) |
 | [`docs/architecture/chat-general-closure.md`](docs/architecture/chat-general-closure.md) | Cierre ENG-173 / criterios de aceptación |
