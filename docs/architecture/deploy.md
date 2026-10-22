@@ -63,7 +63,7 @@ Script local/CI de migrate: [`scripts/railway-migrate.sh`](../../scripts/railway
 
 - Logs **JSON** en stdout vía `nestjs-pino` / `pino-http`.
 - Cada request HTTP lleva `requestId` (header entrante `x-request-id` o UUID) y
-  responde `X-Request-Id`.
+responde `X-Request-Id`.
 - Redacción automática de `Authorization`, passwords, tokens y `verification_token`.
 - Health checks de Terminus **no** se loguean en cada poll (ruido).
 - `RAILWAY_GIT_COMMIT_SHA` aparece en props del log cuando Railway lo inyecta.
@@ -82,10 +82,13 @@ Staging actual:
 
 `https://quantiaapi-production.up.railway.app/api/v1/webhooks/notion`
 
-1. Crear/actualizar suscripción en Notion con esa URL.
-2. Pegar el `verification_token` de la **respuesta HTTP** del handshake en **Verify**
-   (la API ya no lo imprime en logs — S4).
+1. Crear/actualizar suscripción en Notion con esa URL (servicio **Quantia_API**, no el `api` legacy).
+2. Health ok → Notion **Resend token**. El token **no** aparece en Network/Deploy Logs (S4).
+
+   Ayuda temporal: Console del contenedor → `cat /tmp/notion-verify-token.txt` → pegar en **Verify**.
+    (Quitar esa escritura del código tras completar la rotación.)
 3. Guardar ese **mismo** token como `NOTION_WEBHOOK_SECRET` (`Quantia_API` + `worker`) y redeploy.
+
    No hay un “Webhook secret” aparte; no usar el Access Token de la integración.
 4. Eliminar suscripciones/túneles viejos (incluida cualquier URL `api-production-18cd…`).
 5. Smoke: editar sandbox → `sync_events` `SYNCED`.
@@ -119,6 +122,6 @@ Ver [`handoff-security.md`](./handoff-security.md). Migración `20260919000000_e
 - [x] Health 200 on Railway staging
 - [x] Webhook Notion HTTPS sin túnel
 - [x] 401 without JWT on protected route
-- [ ] Origin CORS arbitrario rechazado; preview Vercel permitido si el flag está on
-- [ ] Smoke WSS con JWT (manual)
-- [ ] Front Vercel consume API (cuando exista el front)
+- [x] Origin CORS arbitrario rechazado; preview Vercel permitido si el flag está on
+- [x] Smoke WSS con JWT (manual)
+- [x] Front Vercel consume API (cuando exista el front)

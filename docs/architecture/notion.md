@@ -48,18 +48,21 @@ Notion **no** puede llamar a `localhost`. La suscripción del webhook necesita u
 
 **Checklist al crear / cambiar suscripción:**
 
-1. URL pública HTTPS de la API (arriba).
+1. URL pública HTTPS de la API (arriba). Confirmar `GET /api/v1/health` → `ok` en **Quantia_API** (no el servicio `api` legacy).
 2. Notion envía un POST único con `verification_token` (sin firma). La API responde
-   200 con el token en el cuerpo (para pegarlo en **Verify**). El valor **no** se
-   escribe en logs (S4 / T-08).
-3. Ese **mismo** `verification_token` es la clave HMAC de todos los eventos
+   200 con el token en el cuerpo. El valor **no** se escribe en Deploy/Network Logs (S4 / T-08).
+3. **Obtener el token en Railway (ayuda temporal de rotación — quitar del código tras Verify):**
+   - Notion → Webhooks → **Resend token** / Verify.
+   - Deploy Logs: mensaje `Notion webhook verification handshake received (token at /tmp/notion-verify-token.txt)`.
+   - Quantia_API → **Console** → `cat /tmp/notion-verify-token.txt`.
+   - Pegar ese valor en el modal **Verify** de Notion.
+4. Ese **mismo** `verification_token` es la clave HMAC de todos los eventos
    posteriores (`X-Notion-Signature`). Guardarlo como `NOTION_WEBHOOK_SECRET`
    en `.env` y en Railway (`Quantia_API` + `worker`). **No** es el Access Token de la
-   integración (`NOTION_TOKEN` / `ntn_…`). Notion **no** muestra un “Webhook
-   secret” aparte tras verificar.
-4. Redeploy `Quantia_API` + `worker` tras setear el secret.
-5. Borrar cualquier suscripción/túnel viejo (incluida `api-production-18cd…`).
-6. Smoke (**ENG-159 Done**, 2026-09-20): editar fila sandbox Projects/Tasks/Progress → `sync_events.status = SYNCED` (evidencia en [`deploy-validation.md`](./deploy-validation.md)).
+   integración (`NOTION_TOKEN` / `ntn_…`). Notion **no** reexpone el secret tras verificar.
+5. Redeploy `Quantia_API` + `worker` tras setear el secret. Luego **eliminar** la escritura a `/tmp` del controller.
+6. Borrar cualquier suscripción/túnel viejo (incluida `api-production-18cd…`).
+7. Smoke (**ENG-159 Done**, 2026-09-20): editar fila sandbox Projects/Tasks/Progress → `sync_events.status = SYNCED` (evidencia en [`deploy-validation.md`](./deploy-validation.md)).
 
 ### Túnel local (solo si no hay staging)
 

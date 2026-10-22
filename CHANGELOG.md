@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Rotación de secretos post-incidente Railway (21–22 oct 2026):** tras el [aviso de Railway](https://blog.railway.com/p/security-disclosure-wednesday-october-21st), se rotaron en staging (`Quantia_API` + `worker`) `DATABASE_URL` / `DIRECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`, JWT, `NOTION_TOKEN` y Redis (`${{Redis.REDIS_URL}}`). Variables deben vivir en el servicio **Quantia_API** (dominio `quantiaapi-production…`), no solo en el `api` legacy. Webhook Notion a recrear/verificar tras health ok.
+- **Handshake Notion en Railway (temporal, quitar tras Verify):** el `POST /api/v1/webhooks/notion` sigue sin loguear el `verification_token` (T-08); durante la rotación lo escribe en `/tmp/notion-verify-token.txt` del contenedor. Tras **Resend token** en Notion: Railway → Quantia_API → **Console** → `cat /tmp/notion-verify-token.txt` → pegar en Verify + `NOTION_WEBHOOK_SECRET`. Docs: [`notion.md`](docs/architecture/notion.md), [`deploy.md`](docs/architecture/deploy.md), [`infra-hardening.md`](docs/security/infra-hardening.md).
+
 ### Added
 
 - **Directorio de usuarios para coordinadores (backlog deuda técnica):** `GET /api/v1/users/directory?q=&page=&pageSize=` para `ADMINISTRADOR` y `COORDINADOR`. Exige término de búsqueda (2–100 caracteres, nombre o e-mail sin distinguir mayúsculas), solo usuarios activos, devuelve únicamente `id`, `fullName`, `email`; `pageSize` máx. 50. Contracts 0.7.0 (`userDirectoryQuerySchema`, `paginatedUserDirectoryResponseSchema`).
