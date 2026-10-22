@@ -38,7 +38,7 @@ Notion does **not** re-expose the token after verify. To rotate:
 
 1. Delete the webhook subscription in Notion.
 2. Create a new subscription pointing at the HTTPS webhook URL on **Quantia_API**.
-3. Complete Verify with the handshake `verification_token`. Railway Network/Deploy Logs do **not** show the body (T-08). Temporary rotation aid: after Resend, Console → `cat /tmp/notion-verify-token.txt` (remove that write from [`NotionWebhookController`](../../src/notion/notion-webhook.controller.ts) after verify).
+3. Complete Verify with the handshake `verification_token` (capture from the HTTP response at handshake time; Network/Deploy Logs do **not** show the body — T-08).
 4. Set `NOTION_WEBHOOK_SECRET` to that same value on Railway (`Quantia_API` + `worker`); redeploy.
 
 ## Supabase `service_role` + RLS

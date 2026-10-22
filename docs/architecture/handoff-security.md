@@ -10,7 +10,7 @@ Linear: [ENG-126](https://linear.app/brevku/issue/ENG-126/f7-estabilizacion-y-ha
 |----------|--------|
 | API | `https://quantiaapi-production.up.railway.app` (**GitHub** service `Quantia_API`) |
 | Health | `GET /api/v1/health` |
-| Notion webhook | `POST /api/v1/webhooks/notion` (secret = `verification_token`; rotación: Console → `cat /tmp/notion-verify-token.txt`) |
+| Notion webhook | `POST /api/v1/webhooks/notion` (secret = handshake `verification_token`; re-verificado 2026-10-22) |
 | Deploy | merge → `main` auto-deploy; legacy `api` (`api-production-18cd…`) deprecar |
 | Postgres | Supabase: Transaction pooler `:6543` (`DATABASE_URL`); **Session pooler** `:5432` (`DIRECT_URL`, política staging ENG-156) |
 | Redis | Railway plugin |

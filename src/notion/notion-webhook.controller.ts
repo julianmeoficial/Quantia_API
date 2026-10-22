@@ -14,15 +14,11 @@ import { ApiTags } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AuditResult, SyncEntityType } from '@prisma/client';
 import { createHmac, timingSafeEqual } from 'crypto';
-import { writeFile } from 'fs/promises';
 import { AuditService } from '../audit/audit.service';
 import { Public } from '../common/decorators/public.decorator';
 import type { EnvConfig } from '../config/env.schema';
 import { NotionSyncEnqueueService } from './notion-sync-enqueue.service';
 import { NotionWebhookReplayService } from './notion-webhook-replay.service';
-
-/** Temporary rotation aid — remove after Notion webhook verify (Railway Console: cat this file). */
-const NOTION_VERIFY_TOKEN_PATH = '/tmp/notion-verify-token.txt';
 
 @ApiTags('webhooks')
 @Controller({ path: 'webhooks/notion', version: '1' })
@@ -46,18 +42,7 @@ export class NotionWebhookController {
   ): Promise<{ ok: true } | { verification_token: string }> {
     if (typeof body.verification_token === 'string') {
       // Handshake: return token in body for Notion UI; never log the value (T-08).
-      // TEMP (rotation): write once to container disk so Console can `cat` it; remove after verify.
-      try {
-        await writeFile(NOTION_VERIFY_TOKEN_PATH, body.verification_token, {
-          encoding: 'utf8',
-          mode: 0o600,
-        });
-        this.logger.log(
-          `Notion webhook verification handshake received (token at ${NOTION_VERIFY_TOKEN_PATH})`,
-        );
-      } catch {
-        this.logger.log('Notion webhook verification handshake received');
-      }
+      this.logger.log('Notion webhook verification handshake received');
       return { verification_token: body.verification_token };
     }
 

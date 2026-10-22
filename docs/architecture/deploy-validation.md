@@ -45,8 +45,7 @@ curl -sSI https://quantiaapi-production.up.railway.app/api/v1/health | grep -i x
 Then Notion:
 
 1. Webhook URL → `https://quantiaapi-production.up.railway.app/api/v1/webhooks/notion` (**Quantia_API**)
-2. Notion **Resend token** → Railway Console → `cat /tmp/notion-verify-token.txt` → paste into **Verify**
-   (body not shown in Network/Deploy Logs — S4 / ENG-130; `/tmp` write is temporary rotation aid)
+2. Paste handshake `verification_token` into Notion **Verify** (body not in Network/Deploy Logs — S4 / ENG-130)
 3. Set `NOTION_WEBHOOK_SECRET` to that **same** token (it is the HMAC key; Notion does not show a separate “webhook secret”)
 4. Redeploy `Quantia_API` + `worker`; delete any cloudflared / old `api-production-18cd` subscription
 5. Edit sandbox page → `sync_events` row `SYNCED`

@@ -5,12 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Released]
+## [Unreleased]
+
+## [0.1.0] - 2026-10-22
 
 ### Changed
 
-- **Rotación de secretos post-incidente Railway (21–22 oct 2026):** tras el [aviso de Railway](https://blog.railway.com/p/security-disclosure-wednesday-october-21st), se rotaron en staging (`Quantia_API` + `worker`) `DATABASE_URL` / `DIRECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`, JWT, `NOTION_TOKEN` y Redis (`${{Redis.REDIS_URL}}`). Variables deben vivir en el servicio **Quantia_API** (dominio `quantiaapi-production…`), no solo en el `api` legacy. Webhook Notion a recrear/verificar tras health ok.
-- **Handshake Notion en Railway (temporal, quitar tras Verify):** el `POST /api/v1/webhooks/notion` sigue sin loguear el `verification_token` (T-08); durante la rotación lo escribe en `/tmp/notion-verify-token.txt` del contenedor. Tras **Resend token** en Notion: Railway → Quantia_API → **Console** → `cat /tmp/notion-verify-token.txt` → pegar en Verify + `NOTION_WEBHOOK_SECRET`. Docs: [`notion.md`](docs/architecture/notion.md), [`deploy.md`](docs/architecture/deploy.md), [`infra-hardening.md`](docs/security/infra-hardening.md).
+- **Rotación de secretos post-incidente Railway (21–22 oct 2026):** tras el [aviso de Railway](https://blog.railway.com/p/security-disclosure-wednesday-october-21st), se rotaron en staging (`Quantia_API` + `worker`) `DATABASE_URL` / `DIRECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`, JWT, `NOTION_TOKEN`, Redis (`${{Redis.REDIS_URL}}`) y `NOTION_WEBHOOK_SECRET`. Variables en el servicio **Quantia_API** (dominio `quantiaapi-production…`), no solo en el `api` legacy. Suscripción Notion re-verificada (2026-10-22).
 
 ### Added
 
@@ -53,3 +54,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Docker image default stage is now `runner` (api/worker); `migrate` is an explicit build target so Compose no longer starts the API with `prisma migrate deploy`.
 - Docker runner now copies `packages/contracts` so the `@quantia/contracts` workspace symlink resolves at runtime.
+
+[Unreleased]: https://github.com/julianmeoficial/Quantia_API/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/julianmeoficial/Quantia_API/releases/tag/v0.1.0
