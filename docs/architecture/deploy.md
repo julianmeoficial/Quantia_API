@@ -82,9 +82,9 @@ Staging actual:
 
 `https://quantiaapi-production.up.railway.app/api/v1/webhooks/notion`
 
-1. Crear/actualizar suscripción en Notion con esa URL.
-2. Pegar el `verification_token` de la **respuesta HTTP** del handshake en **Verify**
-   (la API ya no lo imprime en logs — S4).
+1. Crear/actualizar suscripción en Notion con esa URL (servicio **Quantia_API**, no el `api` legacy).
+2. Health ok → completar **Verify** con el `verification_token` del handshake
+   (no aparece en Network/Deploy Logs — S4).
 3. Guardar ese **mismo** token como `NOTION_WEBHOOK_SECRET` (`Quantia_API` + `worker`) y redeploy.
    No hay un “Webhook secret” aparte; no usar el Access Token de la integración.
 4. Eliminar suscripciones/túneles viejos (incluida cualquier URL `api-production-18cd…`).

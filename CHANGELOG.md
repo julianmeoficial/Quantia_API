@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-22
+
+### Changed
+
+- **Rotación de secretos post-incidente Railway (21–22 oct 2026):** tras el [aviso de Railway](https://blog.railway.com/p/security-disclosure-wednesday-october-21st), se rotaron en staging (`Quantia_API` + `worker`) `DATABASE_URL` / `DIRECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`, JWT, `NOTION_TOKEN`, Redis (`${{Redis.REDIS_URL}}`) y `NOTION_WEBHOOK_SECRET`. Variables en el servicio **Quantia_API** (dominio `quantiaapi-production…`), no solo en el `api` legacy. Suscripción Notion re-verificada (2026-10-22).
+
 ### Added
 
 - **Directorio de usuarios para coordinadores (backlog deuda técnica):** `GET /api/v1/users/directory?q=&page=&pageSize=` para `ADMINISTRADOR` y `COORDINADOR`. Exige término de búsqueda (2–100 caracteres, nombre o e-mail sin distinguir mayúsculas), solo usuarios activos, devuelve únicamente `id`, `fullName`, `email`; `pageSize` máx. 50. Contracts 0.7.0 (`userDirectoryQuerySchema`, `paginatedUserDirectoryResponseSchema`).
@@ -47,3 +53,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Docker image default stage is now `runner` (api/worker); `migrate` is an explicit build target so Compose no longer starts the API with `prisma migrate deploy`.
 - Docker runner now copies `packages/contracts` so the `@quantia/contracts` workspace symlink resolves at runtime.
+
+[Unreleased]: https://github.com/julianmeoficial/Quantia_API/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/julianmeoficial/Quantia_API/releases/tag/v0.1.0

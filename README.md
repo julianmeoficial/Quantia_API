@@ -4,6 +4,8 @@ Backend NestJS para **Quantia**, plataforma de gestión de proyectos de investig
 
 Este repositorio contiene **solo la API**: REST versionada bajo `/api/v1`, worker BullMQ (sync Notion + reportes PDF/Excel) y health checks de infraestructura. Socket.io vive en el mismo contenedor que la API.
 
+**Versión:** `0.1.0` (primer release; staging en Railway, servicio `Quantia_API`).
+
 ## Stack
 
 | Capa | Tecnología |

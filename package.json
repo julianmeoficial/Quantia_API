@@ -1,6 +1,6 @@
 {
   "name": "quantia-api",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Quantia research project management API (NestJS)",
   "author": "INNOVATEK'S / GITEMOS",
   "private": true,
