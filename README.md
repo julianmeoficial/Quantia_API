@@ -20,7 +20,7 @@ Este repositorio contiene **solo la API**: REST versionada bajo `/api/v1`, worke
 | Validación | Zod + `@nestjs/config`; DTOs con class-validator |
 | Observabilidad | `nestjs-pino`, Helmet |
 | Tests | Jest + Supertest |
-| Contenedores | Docker multi-stage (`node:22-alpine`), Compose |
+| Contenedores | Docker multi-stage (`node:22.23.4-alpine`, pin de security release), Compose |
 
 ## Requisitos
 

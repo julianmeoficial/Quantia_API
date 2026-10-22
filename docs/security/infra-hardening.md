@@ -52,7 +52,7 @@ Notion does **not** re-expose the token after verify. To rotate:
 
 [`Dockerfile`](../../Dockerfile):
 
-- Base `node:22-alpine`
+- Base **`node:22.23.4-alpine`** (pin exacto; no `node:22-alpine`). El [security release del 21 oct 2026](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases) marca cualquier Node 22 anterior a v22.23.4 como vulnerable: Brotli OOB write / RCE (CVE-2026-111497), bypass de hostname TLS (CVE-2026-106069, CVE-2026-106072) en conexiones salientes a Supabase / Notion / Redis, y `dns.resolve` con NUL (CVE-2026-105482). Fijar el patch level evita que un rebuild en Railway herede un runtime sin parche mientras la etiqueta flotante `22` no apunta aún a la imagen corregida.
 - Final stage `USER node` (non-root)
 - `ENV NODE_ENV=production`
 - No shell debugging tools added in the runner stage
@@ -86,7 +86,7 @@ Swagger mounts only when `NODE_ENV !== 'production'` (local/dev/test). Deployed 
 
 [`NotionWebhookController`](../../src/notion/notion-webhook.controller.ts):
 
-1. Handshake: returns `verification_token` in JSON; logs **without** the token value.
+1. Handshake: returns `verification_token` in JSON; logs **without** the token value (path hint only during temporary rotation aid).
 2. HMAC-SHA256 of raw body vs `X-Notion-Signature`; `timingSafeEqual`.
 3. Timestamp must be within `NOTION_WEBHOOK_MAX_SKEW_SECONDS` (default 300).
 4. Redis `SET NX` on `notion:webhook:replay:<sha256(signature)>` with TTL = skew — replays → **401**.
