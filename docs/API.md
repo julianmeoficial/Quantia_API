@@ -1,6 +1,6 @@
 # Quantia API — Informe de creación y estado
 
-Documento de referencia del backend Quantia: qué se construyó, en qué orden, cómo funciona, qué se probó, qué hay desplegado y dónde profundizar.
+Documento de referencia del backend Quantia: ¿qué se construyó?, ¿en qué orden?, ¿cómo funciona?, ¿qué se probó?, ¿qué hay desplegado? y ¿dónde profundizar?.
 
 | Campo | Valor |
 |-------|--------|
@@ -25,16 +25,16 @@ Quantia API es la **única puerta** de la plataforma hacia datos y servicios ext
 
 El frontend (Vercel) solo habla HTTPS/WSS con esta API. **No** usa `service_role` de Supabase ni el token de Notion.
 
-| Dominio | Qué incluye |
-|---------|-------------|
-| Auth y usuarios | Login JWT, refresh rotatorio, CRUD usuarios solo Admin (sin self-signup); directorio de búsqueda para Admin/Coord |
-| Proyectos / tareas / avances | Flujo de investigación con autorización por membresía |
-| Notion | Capa de captura; espejo en Postgres (`notion_page_id`, `sync_status`, …) |
-| Realtime | Namespaces `/projects`, `/notifications`, `/general` |
-| Presupuesto | Ejecución financiera **solo en Postgres** (nunca en Notion) |
-| Documentos e informes | Storage privado + URLs firmadas; generación async en worker |
-| Auditoría | Logs insert-only |
-| Chat General | Canal autenticado del semillero (flag `CHAT_GENERAL_ENABLED`) |
+| Dominio                      | ¿Qué incluye?                                                                                                     |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Auth y usuarios              | Login JWT, refresh rotatorio, CRUD usuarios solo Admin (sin self-signup); directorio de búsqueda para Admin/Coord |
+| Proyectos / tareas / avances | Flujo de investigación con autorización por membresía                                                             |
+| Notion                       | Capa de captura; espejo en Postgres (`notion_page_id`, `sync_status`, …)                                          |
+| Realtime                     | Namespaces `/projects`, `/notifications`, `/general`                                                              |
+| Presupuesto                  | Ejecución financiera **solo en Postgres** (nunca en Notion)                                                       |
+| Documentos e informes        | Storage privado + URLs firmadas; generación async en worker                                                       |
+| Auditoría                    | Logs insert-only                                                                                                  |
+| Chat General                 | Canal autenticado del semillero (flag `CHAT_GENERAL_ENABLED`)                                                     |
 
 **Fuera de este informe (pero documentado aparte):** UI Vercel; ofensiva remota contra staging (el pentest P0–P6 fue laboratorio local).
 
@@ -85,13 +85,13 @@ Cliente (Vercel / Bruno / FE localhost)
      Notion API
 ```
 
-| Sistema | Rol | Quién conecta |
-|---------|-----|----------------|
-| PostgreSQL (Supabase) | Sistema de registro | Solo API + worker vía Prisma |
-| Redis (Railway) | Colas BullMQ, rate limit, pub/sub realtime | API + worker |
-| Notion | Captura colaborativa (no presupuesto) | Solo API (enqueue) + worker (sync) |
-| Supabase Storage | Archivos de proyecto | Solo API/worker (`service_role` en servidor) |
-| Vercel (frontend) | Cliente | HTTPS/WSS a Railway; sin secretos de infra |
+| Sistema               | Rol                                        | ¿Quién conecta?                              |
+| --------------------- | ------------------------------------------ | -------------------------------------------- |
+| PostgreSQL (Supabase) | Sistema de registro                        | Solo API + worker vía Prisma                 |
+| Redis (Railway)       | Colas BullMQ, rate limit, pub/sub realtime | API + worker                                 |
+| Notion                | Captura colaborativa (no presupuesto)      | Solo API (enqueue) + worker (sync)           |
+| Supabase Storage      | Archivos de proyecto                       | Solo API/worker (`service_role` en servidor) |
+| Vercel (frontend)     | Cliente                                    | HTTPS/WSS a Railway; sin secretos de infra   |
 
 **Invariantes:** nada lento en el hilo HTTP; presupuesto nunca se replica a Notion; un módulo Nest por dominio; contratos en `@quantia/contracts` antes de implementar endpoints.
 
@@ -214,7 +214,7 @@ Inventario completo: [`inventory.md`](./architecture/inventory.md). OpenAPI: [`o
 
 ---
 
-## 8. Qué se testeó
+## 8. ¿Qué se testeó?
 
 ### 8.1 Automatizado (CI)
 
@@ -289,7 +289,7 @@ Producción definitiva (`APP_ENV=production`, proyecto separado) queda diferida 
 
 ---
 
-## 10. Cómo correr en local
+## 10. ¿Cómo correr en local?
 
 ```bash
 cp .env.example .env

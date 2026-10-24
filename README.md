@@ -187,11 +187,11 @@ Endurecimiento post-F7: OWASP API Top 10 + ASVS L1–L2. Evidencia en [`docs/sec
 
 GitHub Actions en cada PR y push a `main`:
 
-| Workflow | Qué hace |
-|----------|----------|
-| [`ci.yml`](.github/workflows/ci.yml) job `secrets` | gitleaks (historial incluido) |
-| [`ci.yml`](.github/workflows/ci.yml) job `verify` | `npm ci` → `npm run audit:ci` → migrate → lint (incl. `eslint-plugin-security`) → typecheck → unit + e2e → `docker build` → Trivy OS (CRITICAL/HIGH) |
-| [`codeql.yml`](.github/workflows/codeql.yml) | CodeQL `security-extended` + gate SARIF (sin upload GHAS) |
+| Workflow                                           | ¿Qué hace?                                                                                                                                           |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`ci.yml`](.github/workflows/ci.yml) job `secrets` | gitleaks (historial incluido)                                                                                                                        |
+| [`ci.yml`](.github/workflows/ci.yml) job `verify`  | `npm ci` → `npm run audit:ci` → migrate → lint (incl. `eslint-plugin-security`) → typecheck → unit + e2e → `docker build` → Trivy OS (CRITICAL/HIGH) |
+| [`codeql.yml`](.github/workflows/codeql.yml)       | CodeQL `security-extended` + gate SARIF (sin upload GHAS)                                                                                            |
 
 ## Documentación
 
