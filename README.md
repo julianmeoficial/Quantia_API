@@ -6,6 +6,8 @@ Este repositorio contiene **solo la API**: REST versionada bajo `/api/v1`, worke
 
 **Versión:** `0.1.0` (primer release; staging en Railway, servicio `Quantia_API`).
 
+**Informe de creación y estado del backend:** [`docs/API.md`](docs/API.md) — hitos F0–F7 / S1–S6 / P0–P6, sistemas, seed en staging, pruebas y mapa de docs.
+
 ## Stack
 
 | Capa | Tecnología |
@@ -195,6 +197,7 @@ GitHub Actions en cada PR y push a `main`:
 
 | Documento | Contenido |
 |-----------|-----------|
+| [`docs/API.md`](docs/API.md) | **Informe API:** creación, hitos, deploy staging, seed, tests, pentest y referencias |
 | [`docs/architecture/overview.md`](docs/architecture/overview.md) | Arquitectura, árbol de paquetería, guía de carpetas |
 | [`docs/architecture/docker.md`](docs/architecture/docker.md) | Imágenes y contenedores Docker, stages, flujo de arranque |
 | [`docs/architecture/auth.md`](docs/architecture/auth.md) | Auth JWT, roles, refresh rotativo (F1 / ENG-119) |
