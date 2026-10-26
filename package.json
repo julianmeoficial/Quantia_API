@@ -60,7 +60,7 @@
     "@prisma/client": "^6.16.1",
     "@quantia/contracts": "0.0.1",
     "@socket.io/redis-adapter": "^8.3.0",
-    "@supabase/supabase-js": "^2.116.0",
+    "@supabase/supabase-js": "^2.118.0",
     "argon2": "^0.45.1",
     "bullmq": "^6.3.6",
     "class-transformer": "^0.5.1",
