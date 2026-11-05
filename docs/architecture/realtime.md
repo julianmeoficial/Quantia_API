@@ -47,4 +47,6 @@ El adaptador `@socket.io/redis-adapter` también usa Redis para multi-réplica d
 2. API con `CORS_ORIGINS` y `REDIS_URL=redis://localhost:6379`.
 3. Cliente: `io('http://localhost:3000/projects', { auth: { token } })`.
 
+Integración de un cliente (login, refresh, reconexión, Chat General): [`../development/chat-e2e-integration.md`](../development/chat-e2e-integration.md).
+
 E2e: `test/realtime.e2e-spec.ts` — rechazo sin JWT; dos clientes en la misma room reciben un evento emitido por el mismo path del worker (`RealtimeEmitter`).

@@ -206,6 +206,7 @@ GitHub Actions en cada PR y push a `main`:
 | [`docs/architecture/realtime.md`](docs/architecture/realtime.md) | Socket.io namespaces, JWT handshake, rooms, Redis bridge (F4 / ENG-123) |
 | [`docs/architecture/chat-general.md`](docs/architecture/chat-general.md) | Chat General del semillero (`/general`, presencia Redis) |
 | [`docs/architecture/chat-general-closure.md`](docs/architecture/chat-general-closure.md) | Cierre ENG-173 / criterios de aceptación |
+| [`docs/development/chat-e2e-integration.md`](docs/development/chat-e2e-integration.md) | **Guía de integración E2E:** conectar un cliente a toda la API y al Chat General en tiempo real (auth, REST, socket `/general`, reconexión, riesgos) |
 | [`docs/architecture/budget-storage-reports.md`](docs/architecture/budget-storage-reports.md) | Presupuesto (solo Postgres), Storage firmado, reportes async PDF/Excel (F5 / ENG-124) |
 | [`docs/architecture/deploy.md`](docs/architecture/deploy.md) | Railway staging, migrate, logs JSON, CORS, Notion HTTPS sin túnel (F6 / ENG-125) |
 | [`docs/architecture/deploy-validation.md`](docs/architecture/deploy-validation.md) | Checklist smoke staging + URLs + hallazgo IPv6 Direct vs Session pooler |

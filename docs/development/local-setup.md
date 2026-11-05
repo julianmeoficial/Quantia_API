@@ -109,3 +109,5 @@ s.on('tarea.actualizada', console.log);
 ```
 
 Detalle: [`docs/architecture/realtime.md`](../architecture/realtime.md).
+
+Chat General (`/general`) de punta a punta, con cliente de referencia y pruebas con `curl`: [`chat-e2e-integration.md`](./chat-e2e-integration.md).
