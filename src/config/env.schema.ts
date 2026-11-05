@@ -8,6 +8,13 @@ const boolFromEnv = z
   .default(false)
   .transform((value) => value === true || value === 'true' || value === '1');
 
+/** Same parsing as `boolFromEnv` but enabled when unset (kill switch stays available). */
+const boolFromEnvDefaultTrue = z
+  .union([z.boolean(), z.enum(['true', 'false', '1', '0'])])
+  .optional()
+  .default(true)
+  .transform((value) => value === true || value === 'true' || value === '1');
+
 export const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']),
@@ -115,7 +122,8 @@ export const envSchema = z
     HTTP_JSON_BODY_LIMIT: z.string().min(1).default('1mb'),
     HTTP_JSON_MAX_DEPTH: z.coerce.number().int().positive().default(10),
 
-    WS_MAX_CONNECTIONS_PER_USER: z.coerce.number().int().positive().default(5),
+    /** Sockets per user across namespaces (one full tab opens up to 3). */
+    WS_MAX_CONNECTIONS_PER_USER: z.coerce.number().int().positive().default(10),
     WS_MAX_EVENTS_PER_SECOND: z.coerce.number().int().positive().default(30),
     WS_IDLE_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
 
@@ -125,8 +133,8 @@ export const envSchema = z
       .positive()
       .default(50),
 
-    /** ENG-171 — Chat General del semillero. */
-    CHAT_GENERAL_ENABLED: boolFromEnv,
+    /** ENG-171 — Chat General del semillero. Enabled by default; `false` = kill switch. */
+    CHAT_GENERAL_ENABLED: boolFromEnvDefaultTrue,
     CHAT_GENERAL_ROOM: z.string().min(1).default('general'),
     CHAT_GENERAL_HISTORY_DEFAULT_LIMIT: z.coerce
       .number()
@@ -157,6 +165,26 @@ export const envSchema = z
       .default(20),
     /** Max POST /chat/general/messages per user per minute. */
     CHAT_GENERAL_RATE_LIMIT: z.coerce.number().int().positive().default(20),
+    /** Authors may edit for this long after sending (0 = no limit). Default 48 h. */
+    CHAT_GENERAL_EDIT_WINDOW_SECONDS: z.coerce
+      .number()
+      .int()
+      .nonnegative()
+      .default(172_800),
+    /** Typing indicator lifetime without refresh (clients re-send every ~TTL/2). */
+    CHAT_GENERAL_TYPING_TTL_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(30_000)
+      .default(6_000),
+    /** Extra seconds a socket may stay open after its access JWT expires. */
+    CHAT_GENERAL_TOKEN_GRACE_SECONDS: z.coerce
+      .number()
+      .int()
+      .nonnegative()
+      .max(300)
+      .default(30),
   })
   .superRefine((data, ctx) => {
     if (data.APP_ENV === 'production' && data.CORS_VERCEL_PREVIEW) {

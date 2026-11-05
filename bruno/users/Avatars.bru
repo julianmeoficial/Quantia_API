@@ -1,0 +1,19 @@
+meta {
+  name: Avatars
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/users/avatars
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  Catalog of the 5 predefined avatars.
+}

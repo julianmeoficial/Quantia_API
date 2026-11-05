@@ -49,14 +49,22 @@ describe('RealtimeEmitter', () => {
     const payload = {
       message: {
         id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        seq: 1,
+        version: 1,
         content: 'hola',
         clientMessageId: null,
         createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        editedAt: null,
+        deletedAt: null,
         author: {
           id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
           name: 'Ana',
+          avatar: 'AVATAR_01' as const,
           avatarUrl: null,
         },
+        replyTo: null,
+        reactions: [],
       },
     };
 

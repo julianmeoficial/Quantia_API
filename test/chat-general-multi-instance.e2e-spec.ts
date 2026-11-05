@@ -123,6 +123,7 @@ describe('Chat General multi-instance (e2e)', () => {
         email: 'mi-user-a@quantia.local',
         fullName: 'Multi A',
         passwordHash: await argon2.hash(password),
+        avatar: 'AVATAR_01',
         userRoles: {
           create: [{ roleId: byName[RoleName.INVESTIGADOR] }],
         },
@@ -135,6 +136,7 @@ describe('Chat General multi-instance (e2e)', () => {
         email: 'mi-user-b@quantia.local',
         fullName: 'Multi B',
         passwordHash: await argon2.hash(password),
+        avatar: 'AVATAR_01',
         userRoles: {
           create: [{ roleId: byName[RoleName.INVESTIGADOR] }],
         },

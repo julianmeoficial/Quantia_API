@@ -247,7 +247,14 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -255,6 +262,71 @@
             "bearer": []
           }
         ],
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/users/me/avatar": {
+      "patch": {
+        "description": "Photo uploads are not supported. Any authenticated user can change it at any time.",
+        "operationId": "UsersController_updateMyAvatar",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMyAvatarDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Choose one of the 5 predefined avatars (required for chat)",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/users/avatars": {
+      "get": {
+        "operationId": "UsersController_avatars",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvatarCatalogResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Catalog of predefined avatars",
         "tags": [
           "users"
         ]
@@ -1747,6 +1819,7 @@
     },
     "/chat/general/messages": {
       "post": {
+        "description": "201 on create, 200 on idempotent replay with the same clientMessageId. Emits chat.general.mensaje-creado.",
         "operationId": "ChatGeneralController_create",
         "parameters": [],
         "requestBody": {
@@ -1761,7 +1834,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneralChatMessageEnvelopeDto"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1769,6 +1849,7 @@
             "bearer": []
           }
         ],
+        "summary": "Send a message (optionally replying to another)",
         "tags": [
           "chat-general"
         ]
@@ -1798,6 +1879,88 @@
         ],
         "responses": {
           "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneralChatHistoryResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "History, newest first (cursor pagination)",
+        "tags": [
+          "chat-general"
+        ]
+      }
+    },
+    "/chat/general/messages/{messageId}": {
+      "patch": {
+        "description": "Emits chat.general.mensaje-editado.",
+        "operationId": "ChatGeneralController_edit",
+        "parameters": [
+          {
+            "name": "messageId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditGeneralChatMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneralChatMessageEnvelopeDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Edit own message within CHAT_GENERAL_EDIT_WINDOW_SECONDS",
+        "tags": [
+          "chat-general"
+        ]
+      },
+      "delete": {
+        "description": "Emits chat.general.mensaje-eliminado.",
+        "operationId": "ChatGeneralController_remove",
+        "parameters": [
+          {
+            "name": "messageId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
             "description": ""
           }
         },
@@ -1806,6 +1969,203 @@
             "bearer": []
           }
         ],
+        "summary": "Delete own message (ADMINISTRADOR: any). Idempotent.",
+        "tags": [
+          "chat-general"
+        ]
+      }
+    },
+    "/chat/general/messages/{messageId}/reaction": {
+      "put": {
+        "description": "Emits chat.general.reacciones-actualizadas.",
+        "operationId": "ChatGeneralController_react",
+        "parameters": [
+          {
+            "name": "messageId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetGeneralChatReactionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneralChatMessageEnvelopeDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set my reaction (replaces the previous one)",
+        "tags": [
+          "chat-general"
+        ]
+      },
+      "delete": {
+        "operationId": "ChatGeneralController_unreact",
+        "parameters": [
+          {
+            "name": "messageId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneralChatMessageEnvelopeDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove my reaction",
+        "tags": [
+          "chat-general"
+        ]
+      }
+    },
+    "/chat/general/updates": {
+      "get": {
+        "operationId": "ChatGeneralController_updates",
+        "parameters": [
+          {
+            "name": "since",
+            "required": false,
+            "in": "query",
+            "description": "Return changes after this instant (use the previous `serverTime`, minus a few seconds of overlap).",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque `nextCursor` from a previous page.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneralChatUpdatesResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change feed for reconnects (creates, edits, deletes, reactions)",
+        "tags": [
+          "chat-general"
+        ]
+      }
+    },
+    "/chat/general/read": {
+      "put": {
+        "description": "Emits chat.general.lectura when it moves forward.",
+        "operationId": "ChatGeneralController_markRead",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkGeneralChatReadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkGeneralChatReadResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Advance my read pointer (monotonic)",
+        "tags": [
+          "chat-general"
+        ]
+      }
+    },
+    "/chat/general/state": {
+      "get": {
+        "operationId": "ChatGeneralController_state",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Bootstrap: unread count, read pointers, limits, reactions",
         "tags": [
           "chat-general"
         ]
@@ -1867,6 +2227,132 @@
         },
         "required": [
           "refreshToken"
+        ]
+      },
+      "UserResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "INVESTIGADOR",
+                "COORDINADOR",
+                "ADMINISTRADOR"
+              ]
+            }
+          },
+          "avatar": {
+            "type": "string",
+            "enum": [
+              "AVATAR_01",
+              "AVATAR_02",
+              "AVATAR_03",
+              "AVATAR_04",
+              "AVATAR_05"
+            ],
+            "nullable": true,
+            "description": "One of the 5 predefined avatars; null until chosen."
+          },
+          "avatarRequired": {
+            "type": "boolean",
+            "description": "True while no avatar is chosen. Chat endpoints/socket answer AVATAR_REQUIRED until then."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "fullName",
+          "isActive",
+          "roles",
+          "avatar",
+          "avatarRequired",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UpdateMyAvatarDto": {
+        "type": "object",
+        "properties": {
+          "avatar": {
+            "type": "string",
+            "enum": [
+              "AVATAR_01",
+              "AVATAR_02",
+              "AVATAR_03",
+              "AVATAR_04",
+              "AVATAR_05"
+            ],
+            "example": "AVATAR_01"
+          }
+        },
+        "required": [
+          "avatar"
+        ]
+      },
+      "AvatarOptionDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "AVATAR_01",
+              "AVATAR_02",
+              "AVATAR_03",
+              "AVATAR_04",
+              "AVATAR_05"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "example": "Átomo"
+          },
+          "color": {
+            "type": "string",
+            "example": "#4f46e5"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "color"
+        ]
+      },
+      "AvatarCatalogResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AvatarOptionDto"
+            }
+          }
+        },
+        "required": [
+          "items"
         ]
       },
       "UserDirectoryEntryDto": {
@@ -2390,17 +2876,319 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 4000,
-            "description": "Message body (trimmed). Service may enforce a lower env max."
+            "description": "Plain text (trimmed, control chars stripped). Service enforces CHAT_GENERAL_MESSAGE_MAX_LENGTH."
           },
           "clientMessageId": {
             "type": "string",
             "minLength": 1,
             "maxLength": 64,
-            "description": "Client-generated idempotency key (unique per author)."
+            "description": "Client-generated idempotency key (unique per author). Echoed back so the optimistic bubble can be swapped in place."
+          },
+          "replyToId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Reply to (quote) another live message."
           }
         },
         "required": [
           "content"
+        ]
+      },
+      "PresenceUserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string",
+            "enum": [
+              "AVATAR_01",
+              "AVATAR_02",
+              "AVATAR_03",
+              "AVATAR_04",
+              "AVATAR_05"
+            ],
+            "nullable": true
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true,
+            "deprecated": true,
+            "example": null
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "avatar",
+          "avatarUrl"
+        ]
+      },
+      "GeneralChatReplyPreviewDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "seq": {
+            "type": "number"
+          },
+          "author": {
+            "$ref": "#/components/schemas/PresenceUserDto"
+          },
+          "excerpt": {
+            "type": "string",
+            "nullable": true
+          },
+          "deleted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "seq",
+          "author",
+          "excerpt",
+          "deleted"
+        ]
+      },
+      "GeneralChatReactionSummaryDto": {
+        "type": "object",
+        "properties": {
+          "emoji": {
+            "type": "string",
+            "enum": [
+              "👍",
+              "❤️",
+              "😂",
+              "😮",
+              "😢",
+              "🙏",
+              "🔥",
+              "🎉"
+            ]
+          },
+          "count": {
+            "type": "number"
+          },
+          "userIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "emoji",
+          "count",
+          "userIds"
+        ]
+      },
+      "GeneralChatMessageResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "seq": {
+            "type": "number",
+            "description": "Monotonic order key"
+          },
+          "version": {
+            "type": "number",
+            "description": "Bumped on every change"
+          },
+          "content": {
+            "type": "string",
+            "description": "Empty when deleted"
+          },
+          "clientMessageId": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "editedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "deletedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "author": {
+            "$ref": "#/components/schemas/PresenceUserDto"
+          },
+          "replyTo": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GeneralChatReplyPreviewDto"
+              }
+            ]
+          },
+          "reactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GeneralChatReactionSummaryDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "seq",
+          "version",
+          "content",
+          "clientMessageId",
+          "createdAt",
+          "updatedAt",
+          "editedAt",
+          "deletedAt",
+          "author",
+          "replyTo",
+          "reactions"
+        ]
+      },
+      "GeneralChatMessageEnvelopeDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "$ref": "#/components/schemas/GeneralChatMessageResponseDto"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "GeneralChatHistoryResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GeneralChatMessageResponseDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "hasMore"
+        ]
+      },
+      "EditGeneralChatMessageDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          }
+        },
+        "required": [
+          "content"
+        ]
+      },
+      "SetGeneralChatReactionDto": {
+        "type": "object",
+        "properties": {
+          "emoji": {
+            "type": "string",
+            "enum": [
+              "👍",
+              "❤️",
+              "😂",
+              "😮",
+              "😢",
+              "🙏",
+              "🔥",
+              "🎉"
+            ],
+            "example": "👍"
+          }
+        },
+        "required": [
+          "emoji"
+        ]
+      },
+      "GeneralChatUpdatesResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GeneralChatMessageResponseDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasMore": {
+            "type": "boolean"
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "hasMore",
+          "serverTime"
+        ]
+      },
+      "MarkGeneralChatReadDto": {
+        "type": "object",
+        "properties": {
+          "lastReadSeq": {
+            "type": "number",
+            "minimum": 0,
+            "description": "`seq` of the newest message visible on screen."
+          }
+        },
+        "required": [
+          "lastReadSeq"
+        ]
+      },
+      "MarkGeneralChatReadResponseDto": {
+        "type": "object",
+        "properties": {
+          "lastReadSeq": {
+            "type": "number"
+          },
+          "unreadCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "lastReadSeq",
+          "unreadCount"
         ]
       }
     }

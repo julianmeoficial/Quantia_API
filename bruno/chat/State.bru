@@ -1,0 +1,19 @@
+meta {
+  name: State
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/chat/general/state
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  Bootstrap: unread count, read pointers, limits, reactions.
+}

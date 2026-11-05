@@ -58,6 +58,15 @@ enum SyncJobName {
   DB_TO_NOTION
 }
 
+/// Predefined chat avatars (ENG chat v2). Users cannot upload photos.
+enum AvatarKey {
+  AVATAR_01
+  AVATAR_02
+  AVATAR_03
+  AVATAR_04
+  AVATAR_05
+}
+
 enum SyncEventStatus {
   QUEUED
   PROCESSING
@@ -83,6 +92,8 @@ model User {
   passwordHash   String     @map("password_hash")
   fullName       String     @map("full_name")
   isActive       Boolean    @default(true) @map("is_active")
+  /// Null until the user picks one of the 5 predefined avatars (required for chat).
+  avatar         AvatarKey?
   notionPageId   String?    @unique @map("notion_page_id")
   lastEditedTime DateTime?  @map("last_edited_time")
   syncedAt       DateTime?  @map("synced_at")
@@ -90,18 +101,20 @@ model User {
   createdAt      DateTime   @default(now()) @map("created_at")
   updatedAt      DateTime   @updatedAt @map("updated_at")
 
-  userRoles           UserRole[]
-  refreshTokens       RefreshToken[]
-  coordinatedProjects Project[]       @relation("ProjectCoordinator")
-  createdProjects     Project[]       @relation("ProjectCreator")
-  projectMemberships  ProjectMember[]
-  assignedTasks       Task[]          @relation("TaskAssignee")
-  progressEntries     Progress[]
-  budgetExecutions    BudgetExecution[]
-  uploadedDocuments   Document[]      @relation("DocumentUploader")
-  requestedReports    Report[]        @relation("ReportRequester")
-  auditLogs           AuditLog[]
-  generalChatMessages GeneralChatMessage[]
+  userRoles            UserRole[]
+  refreshTokens        RefreshToken[]
+  coordinatedProjects  Project[]             @relation("ProjectCoordinator")
+  createdProjects      Project[]             @relation("ProjectCreator")
+  projectMemberships   ProjectMember[]
+  assignedTasks        Task[]                @relation("TaskAssignee")
+  progressEntries      Progress[]
+  budgetExecutions     BudgetExecution[]
+  uploadedDocuments    Document[]            @relation("DocumentUploader")
+  requestedReports     Report[]              @relation("ReportRequester")
+  auditLogs            AuditLog[]
+  generalChatMessages  GeneralChatMessage[]
+  generalChatReactions GeneralChatReaction[]
+  generalChatReadState GeneralChatReadState?
 
   @@map("users")
 }
@@ -135,24 +148,24 @@ model RefreshToken {
 }
 
 model Project {
-  id              String        @id @default(uuid()) @db.Uuid
-  title           String
-  description     String?
-  objectives      String?
-  status          ProjectStatus @default(FORMULATION)
-  startDate       DateTime?     @map("start_date")
-  endDate         DateTime?     @map("end_date")
-  coordinatorId   String        @map("coordinator_id") @db.Uuid
-  createdById     String        @map("created_by_id") @db.Uuid
-  notionPageId    String?       @unique @map("notion_page_id")
-  lastEditedTime  DateTime?     @map("last_edited_time")
-  syncedAt        DateTime?     @map("synced_at")
-  syncStatus      SyncStatus    @default(PENDING) @map("sync_status")
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
+  id             String        @id @default(uuid()) @db.Uuid
+  title          String
+  description    String?
+  objectives     String?
+  status         ProjectStatus @default(FORMULATION)
+  startDate      DateTime?     @map("start_date")
+  endDate        DateTime?     @map("end_date")
+  coordinatorId  String        @map("coordinator_id") @db.Uuid
+  createdById    String        @map("created_by_id") @db.Uuid
+  notionPageId   String?       @unique @map("notion_page_id")
+  lastEditedTime DateTime?     @map("last_edited_time")
+  syncedAt       DateTime?     @map("synced_at")
+  syncStatus     SyncStatus    @default(PENDING) @map("sync_status")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
 
-  coordinator User           @relation("ProjectCoordinator", fields: [coordinatorId], references: [id])
-  createdBy   User           @relation("ProjectCreator", fields: [createdById], references: [id])
+  coordinator User            @relation("ProjectCoordinator", fields: [coordinatorId], references: [id])
+  createdBy   User            @relation("ProjectCreator", fields: [createdById], references: [id])
   members     ProjectMember[]
   tasks       Task[]
   progress    Progress[]
@@ -314,15 +327,15 @@ model BudgetItem {
 }
 
 model BudgetExecution {
-  id            String              @id @default(uuid()) @db.Uuid
-  budgetId      String              @map("budget_id") @db.Uuid
-  itemId        String?             @map("item_id") @db.Uuid
-  kind          BudgetExecutionKind
-  amount        Decimal             @db.Decimal(14, 2)
-  occurredAt    DateTime            @map("occurred_at")
-  registeredById String             @map("registered_by_id") @db.Uuid
-  note          String?
-  createdAt     DateTime            @default(now()) @map("created_at")
+  id             String              @id @default(uuid()) @db.Uuid
+  budgetId       String              @map("budget_id") @db.Uuid
+  itemId         String?             @map("item_id") @db.Uuid
+  kind           BudgetExecutionKind
+  amount         Decimal             @db.Decimal(14, 2)
+  occurredAt     DateTime            @map("occurred_at")
+  registeredById String              @map("registered_by_id") @db.Uuid
+  note           String?
+  createdAt      DateTime            @default(now()) @map("created_at")
 
   budget       Budget      @relation(fields: [budgetId], references: [id], onDelete: Cascade)
   item         BudgetItem? @relation(fields: [itemId], references: [id], onDelete: SetNull)
@@ -399,17 +412,54 @@ model AuditLog {
 
 model GeneralChatMessage {
   id              String    @id @default(uuid()) @db.Uuid
+  /// Monotonic server order (BIGSERIAL). Stable sort key for clients.
+  seq             BigInt    @unique @default(autoincrement())
+  /// Bumped on every change (edit, delete, reaction) — clients keep the highest.
+  version         Int       @default(1)
   authorId        String    @map("author_id") @db.Uuid
   content         String    @db.Text
   clientMessageId String?   @map("client_message_id") @db.VarChar(64)
+  replyToId       String?   @map("reply_to_id") @db.Uuid
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
+  editedAt        DateTime? @map("edited_at")
   deletedAt       DateTime? @map("deleted_at")
+  deletedById     String?   @map("deleted_by_id") @db.Uuid
 
-  author User @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  author    User                  @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  replyTo   GeneralChatMessage?   @relation("GeneralChatReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   GeneralChatMessage[]  @relation("GeneralChatReplies")
+  reactions GeneralChatReaction[]
 
   @@unique([authorId, clientMessageId])
   @@index([createdAt, id])
   @@index([authorId, createdAt])
+  @@index([updatedAt, id])
   @@map("general_chat_messages")
+}
+
+/// One reaction per user per message (Telegram default); PUT replaces it.
+model GeneralChatReaction {
+  messageId String   @map("message_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  emoji     String   @db.VarChar(16)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  message GeneralChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId])
+  @@index([messageId])
+  @@map("general_chat_reactions")
+}
+
+/// Per-user read pointer for unread counters and "seen by".
+model GeneralChatReadState {
+  userId      String   @id @map("user_id") @db.Uuid
+  lastReadSeq BigInt   @default(0) @map("last_read_seq")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("general_chat_read_states")
 }

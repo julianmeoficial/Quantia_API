@@ -1,161 +1,146 @@
-# Guía de integración E2E — API completa + Chat General en tiempo real
+# Guía de integración E2E — API completa + Chat General v2 en tiempo real
 
-Guía para conectar un cliente (web/móvil) con **toda** la API de Quantia y, en particular, con el **Chat General** de punta a punta: login → historial REST → socket `/general` → envío → recepción en vivo → reconexión.
+Guía para conectar un cliente (web/móvil) con **toda** la API de Quantia y con el **Chat General** de punta a punta: login → avatar obligatorio → bootstrap → socket `/general` → enviar/editar/borrar/reaccionar/responder → typing → leídos → reconexión sin perder nada.
 
-> "E2E" aquí significa **de extremo a extremo** (cliente → API → Postgres/Redis → todos los clientes). **No** hay cifrado extremo a extremo de mensajes: viajan por TLS (`https`/`wss`) y se guardan en texto plano en Postgres (`general_chat_messages.content`).
+> "E2E" significa **de extremo a extremo** (cliente → API → Postgres/Redis → todos los clientes). **No** hay cifrado extremo a extremo: los mensajes viajan por TLS (`https`/`wss`) y se guardan en texto plano en Postgres.
 
-Estado verificado leyendo el código y las suites e2e existentes (`test/chat-general*.e2e-spec.ts`, `test/realtime.e2e-spec.ts`). Esta guía **no** fue contrastada contra un servidor en ejecución.
+Verificado con la suite automatizada contra Postgres + Redis reales: `test/chat-general-v2.e2e-spec.ts` (REST + Socket.io), `test/chat-general*.e2e-spec.ts`, `test/realtime.e2e-spec.ts` y las specs unitarias de `src/chat-general/` y `src/realtime/`.
 
-Docs relacionados: [`chat-general.md`](../architecture/chat-general.md) (diseño) · [`realtime.md`](../architecture/realtime.md) · [`auth.md`](../architecture/auth.md) · [`inventory.md`](../architecture/inventory.md) (rutas) · [`local-setup.md`](./local-setup.md).
-
----
-
-## 1. ¿Está integrado el chat?
-
-**Sí.** El Chat General está implementado, registrado en `AppModule` y cubierto por tests. No hay nada que "activar" en código; solo configuración.
-
-| Pieza | Dónde | Estado |
-|-------|-------|--------|
-| REST `POST`/`GET /api/v1/chat/general/messages` | `src/chat-general/` | Implementado |
-| Namespace Socket.io `/general` (auto-join a room `general`) | `src/realtime/general-realtime.gateway.ts` | Implementado |
-| Presencia en Redis (multi-pestaña, multi-réplica, TTL + reconciliación) | `src/realtime/chat-general-presence.service.ts` | Implementado |
-| Fanout `RealtimeEmitter` → Redis `quantia:realtime` → `RealtimeBridge` → room | `src/realtime/` | Implementado |
-| Persistencia `general_chat_messages` (soft-delete, idempotencia) | `prisma/migrations/20260925200000_*` | Implementado |
-| Contratos (`chat.general.*`, schemas Zod) | `packages/contracts/src/chat-general.ts` | Implementado |
-| Feature flag | `CHAT_GENERAL_ENABLED` (default `false` en el schema; `true` en `.env.example`) | Configuración |
-| Tests unit + e2e (REST, WS, 2 instancias) | `test/chat-general*.e2e-spec.ts`, `test/realtime.e2e-spec.ts` | Presentes (CI) |
-
-**Lo que el chat NO tiene** (no lo asumas en el cliente):
-
-- Enviar por socket: el gateway `/general` **no escucha eventos del cliente**. Enviar = `POST` REST; recibir = socket.
-- Editar/borrar mensajes (la columna `deletedAt` existe, pero no hay endpoint).
-- Typing indicators, confirmaciones de lectura, mensajes directos, adjuntos, avatares (`avatarUrl` siempre `null`).
-- Listado REST de usuarios en línea: la presencia solo llega por socket.
-- Replay de eventos perdidos mientras el socket estuvo caído (se resuelve re-consultando el historial, §6.5).
+Docs relacionados: [`chat-general.md`](../architecture/chat-general.md) (diseño) · [`realtime.md`](../architecture/realtime.md) · [`auth.md`](../architecture/auth.md) · [`inventory.md`](../architecture/inventory.md) · [`local-setup.md`](./local-setup.md) · Bruno [`bruno/chat/`](../../bruno/chat/).
 
 ---
 
-## 2. Prerrequisitos y configuración
+## 1. Qué incluye el Chat General v2
 
-### 2.1 Variables que afectan al cliente
+| Función (estilo Telegram) | Cómo |
+|---------------------------|------|
+| Chat del semillero en vivo | Socket.io `/general`, room fija, auto-join |
+| Avatar **obligatorio** de 5 predefinidos (sin fotos) | `GET /users/avatars`, `PATCH /users/me/avatar`; el chat responde `AVATAR_REQUIRED` hasta elegir |
+| Enviar con UI optimista e idempotencia | `POST /chat/general/messages` + `clientMessageId` |
+| Responder / citar | `replyToId` → `replyTo` con extracto |
+| Editar (marca "editado") | `PATCH /messages/:id` (autor, ventana 48 h por defecto) |
+| Borrar (autor; Admin modera) | `DELETE /messages/:id` → tombstone + evento |
+| Reacciones rápidas (1 por usuario, 8 emoji) | `PUT`/`DELETE /messages/:id/reaction` |
+| "Escribiendo…" | evento socket `chat.general.escribiendo` (con ack) |
+| En línea / última vez | presencia Redis multi-pestaña y multi-réplica, `lastSeenAt` |
+| No leídos y "visto por" | `PUT /chat/general/read`, `GET /chat/general/state`, evento `chat.general.lectura` |
+| Reconexión sin huecos | `GET /chat/general/updates?since=` (feed de cambios con tombstones) |
+| Orden estable y merges seguros | `seq` (orden del servidor) y `version` (último cambio gana) en cada mensaje |
+| Sesión del socket alineada con el JWT | reautenticación en banda + cierre al expirar |
 
-| Variable | Valor local típico | Por qué importa al chat |
-|----------|--------------------|-------------------------|
-| `CHAT_GENERAL_ENABLED` | `true` | `false` → REST **404** y el WS se rechaza |
-| `CORS_ORIGINS` | origen exacto del front (`http://localhost:5173`) | Allowlist CSV para HTTP y Socket.io; nunca `*`; incluir esquema + puerto |
-| `CORS_VERCEL_PREVIEW` | `true` solo en staging | Permite `https://<sub>.vercel.app`; la API aborta el arranque si es `true` con `APP_ENV=production` |
-| `PORT` | `3000` | Ver aviso de puerto abajo |
-| `REDIS_URL` | `redis://localhost:6379` | Fanout y presencia; sin Redis el chat en vivo no funciona |
-| `JWT_ISSUER` / `JWT_AUDIENCE` | `quantia-api` / `quantia-clients` | Se validan también en el handshake WS |
-| `WS_MAX_CONNECTIONS_PER_USER` | `5` (default) | **Ver §7**: puede bloquear al abrir varias pestañas |
-| `CHAT_GENERAL_MESSAGE_MAX_LENGTH` | `2000` | Tope real de `content` (el contrato admite hasta 4000) |
-| `CHAT_GENERAL_RATE_LIMIT` | `20` | `POST` por minuto por usuario → 429 |
+**No incluye** (no lo asumas): adjuntos/fotos, menciones, mensajes fijados, hilos, mensajes directos, notificaciones push, búsqueda en servidor, cifrado E2E. Enviar/editar/borrar/reaccionar es **REST**; el socket solo empuja eventos y recibe typing/reauth.
 
-> **Aviso de puerto:** `.env.example` fija `PORT=3000` **y** `CORS_ORIGINS=http://localhost:3000,...`. Si tu front también corre en `:3000` choca con la API. Usa otro puerto para el front (Vite `5173`, etc.) y agrégalo a `CORS_ORIGINS`.
+---
 
-### 2.2 Levantar el backend local
+## 2. Configuración
+
+### 2.1 Variables relevantes
+
+| Variable | Default | Notas |
+|----------|---------|-------|
+| `CHAT_GENERAL_ENABLED` | **`true`** | Chat activo salvo que se apague (`false` = kill switch: REST 404 `CHAT_DISABLED`, socket rechazado) |
+| `CHAT_GENERAL_MESSAGE_MAX_LENGTH` | `2000` | Tope real de `content` (contrato: 4000) |
+| `CHAT_GENERAL_EDIT_WINDOW_SECONDS` | `172800` (48 h) | `0` = sin límite |
+| `CHAT_GENERAL_TYPING_TTL_MS` | `6000` | Vida del indicador sin refresco |
+| `CHAT_GENERAL_TOKEN_GRACE_SECONDS` | `30` | Gracia tras `exp` del JWT antes de cerrar el socket |
+| `CHAT_GENERAL_RATE_LIMIT` | `20` | Envíos + ediciones + borrados por minuto (429 + `Retry-After`) |
+| `CHAT_GENERAL_HISTORY_DEFAULT_LIMIT` / `_MAX_LIMIT` | `30` / `100` | Páginas de historial y feed |
+| `CHAT_GENERAL_PRESENCE_TTL_SECONDS` / `_HEARTBEAT_SECONDS` | `60` / `20` | Presencia |
+| `WS_MAX_CONNECTIONS_PER_USER` | **`10`** | Sockets por usuario (una pestaña completa abre hasta 3) |
+| `WS_MAX_EVENTS_PER_SECOND` | `30` | Por socket (typing, reauth, join) |
+| `CORS_ORIGINS` | — | Origen exacto del front (esquema + host + puerto); nunca `*` |
+
+> **Railway:** `.railway/railway.ts` usa `preserve()`, así que los valores ya cargados en staging se mantienen. Si staging tiene `WS_MAX_CONNECTIONS_PER_USER=5` o `CHAT_GENERAL_ENABLED=false` explícitos, hay que cambiarlos a mano. Las variables nuevas no hacen falta (tienen default).
+
+> **Puerto:** la API usa `:3000` por defecto; corre el front en otro (`5173`) y agrégalo a `CORS_ORIGINS`.
+
+### 2.2 Backend local
 
 ```bash
 docker compose up -d postgres redis
-cp .env.example .env            # revisar CHAT_GENERAL_ENABLED=true y CORS_ORIGINS
-npx prisma migrate deploy
-npm run prisma:seed             # usuarios demo (ver §2.3)
-npm run start:dev               # API en http://localhost:3000
+cp .env.example .env
+npx prisma migrate deploy        # incluye 20261105000000_chat_general_v2_avatars
+npm run prisma:seed
+npm run start:dev
 ```
 
-Compose publica Postgres en **`5433`**; ajusta `DATABASE_URL`/`DIRECT_URL` si corres la API fuera de Docker (ver [`local-setup.md`](./local-setup.md)). Smoke: `GET http://localhost:3000/api/v1/health`.
+### 2.3 Usuarios demo
 
-### 2.3 Usuarios de prueba (seed)
+| Email | Password | Rol | Avatar inicial |
+|-------|----------|-----|----------------|
+| `admin@quantia.local` | `AdminPass1!` | ADMINISTRADOR | `AVATAR_01` |
+| `coord@quantia.local` | `CoordPass1!` | COORDINADOR | `AVATAR_02` |
+| `researcher@quantia.local` | `ResearchPass1!` | INVESTIGADOR | `AVATAR_03` |
+| `researcher-b@quantia.local` | `ResearchPass1!` | INVESTIGADOR | **ninguno** (sirve para probar el selector obligatorio) |
 
-| Email | Password | Rol |
-|-------|----------|-----|
-| `admin@quantia.local` | `AdminPass1!` | ADMINISTRADOR |
-| `coord@quantia.local` | `CoordPass1!` | COORDINADOR |
-| `researcher@quantia.local` | `ResearchPass1!` | INVESTIGADOR |
-| `researcher-b@quantia.local` | `ResearchPass1!` | INVESTIGADOR |
+El seed solo pone el avatar al **crear** el usuario; si el usuario lo cambia, re-sembrar no lo pisa.
 
-Cualquier rol autenticado y activo puede usar el chat. No hay auto-registro: las cuentas las crea un Admin con `POST /users`.
-
-### 2.4 URLs base
+### 2.4 URLs
 
 | Entorno | REST | Socket.io |
 |---------|------|-----------|
 | Local | `http://localhost:3000/api/v1` | `http://localhost:3000/general` |
-| Staging (Railway) | `https://quantiaapi-production.up.railway.app/api/v1` | `https://quantiaapi-production.up.railway.app/general` |
+| Staging | `https://quantiaapi-production.up.railway.app/api/v1` | `https://quantiaapi-production.up.railway.app/general` |
 
-Los namespaces **no** llevan prefijo `/api` ni `/v1`; el path de transporte es el default `/socket.io/`.
+### 2.5 Contratos (`@quantia/contracts` 0.8.0)
 
-### 2.5 Contratos compartidos
-
-`@quantia/contracts` (0.7.0) es un paquete **privado** del workspace (`private: true`). Para usarlo en el front hay que publicarlo en un registro privado, vincularlo (`npm link`/workspace) o copiar `packages/contracts/src/`. Exporta nombres de evento, schemas Zod y helpers (`ChatGeneralEvent`, `RealtimeNamespace`, `generalChatMessageSchema`, `generalRoom`…). Los ejemplos de abajo lo usan; si no lo tienes, reemplaza por los strings literales de §5.
+Paquete privado del workspace (publicar en registro privado, `npm link` o copiar `packages/contracts/src/`). Exporta todo lo que usa esta guía: `ChatGeneralEvent`, `ChatGeneralClientEvent`, `ChatGeneralErrorCode`, `AvatarKey`, `AVATAR_CATALOG`, `CHAT_GENERAL_REACTIONS`, schemas Zod de cada payload y tipos (`GeneralChatMessageDto`, …). Valida los eventos entrantes con los schemas si quieres blindar el cliente.
 
 ---
 
-## 3. Mapa de la API (qué conectar y en qué orden)
+## 3. Mapa de toda la API
 
-Base: `/api/v1`. Inventario canónico: [`inventory.md`](../architecture/inventory.md) · OpenAPI: [`openapi/openapi.json`](../../openapi/openapi.json) (los endpoints del chat no declaran schema de respuesta ahí; usa esta guía) · Swagger en `/api/docs` solo con `NODE_ENV !== production`.
+Base `/api/v1`. OpenAPI regenerado: [`openapi/openapi.json`](../../openapi/openapi.json) (ya con schemas de respuesta del chat) · Swagger `/api/docs` fuera de producción · Inventario: [`inventory.md`](../architecture/inventory.md).
 
-| Orden | Grupo | Endpoints | Acceso | Notas de integración |
-|-------|-------|-----------|--------|----------------------|
-| 0 | Health | `GET /health` | Público | Readiness Postgres + Redis |
-| 1 | Auth | `POST /auth/login` · `POST /auth/refresh` · `POST /auth/logout` | Público | Ver §4. Throttle propio (10/min por defecto) |
-| 2 | Perfil | `GET /users/me` | JWT | Pinta nombre/roles tras login |
-| 3 | Chat REST | `GET`/`POST /chat/general/messages` | JWT + flag | Ver §5 |
-| 3 | Chat WS | namespace `/general` | JWT en handshake | Ver §5–§6 |
-| 4 | Proyectos | `GET/POST /projects` · `GET/PATCH/DELETE /projects/:id` · `POST /projects/:id/members` · `DELETE /projects/:id/members/:userId` | JWT + membresía | Listados `page`/`pageSize` → `{ data, meta }` |
-| 4 | Tareas | `/projects/:projectId/tasks[/:taskId]` | JWT + membresía | CRUD |
-| 4 | Avances | `/projects/:projectId/progress[/:progressId]` | JWT + membresía | CRUD |
-| 4 | Presupuesto | `/projects/:projectId/budget` · `/budget/executions` | JWT; mutaciones Admin/Coord | |
-| 4 | Documentos | `/projects/:projectId/documents` (+ `/:id/download`) | JWT + membresía | Upload `multipart/form-data`; descarga = URL firmada de vida corta |
-| 4 | Reportes | `POST /projects/:projectId/reports` → **202** · `GET …/reports/:reportId` | JWT | Generación async; hacer polling hasta tener URL firmada |
-| 4 | Directorio | `GET /users/directory?q=` | JWT + Admin/Coord | `q` mínimo 2 caracteres |
-| 4 | Admin usuarios | `/users` CRUD | JWT + Admin | |
-| — | Webhook Notion | `POST /webhooks/notion` | Público + HMAC | **Solo servidor-a-servidor**; el front no lo usa |
-| WS | Dominio | `/projects` (+ `join { projectId }`), `/notifications` | JWT en handshake | Eventos `tarea.actualizada`, `avance.registrado`, `proyecto.retrasado`, `presupuesto.ejecucion-baja` |
+| Orden | Grupo | Endpoints | Acceso |
+|-------|-------|-----------|--------|
+| 0 | Health | `GET /health` | Público |
+| 1 | Auth | `POST /auth/login` · `/auth/refresh` · `/auth/logout` | Público (throttle `auth`) |
+| 2 | Perfil | `GET /users/me` → incluye `avatar` y `avatarRequired` | JWT |
+| 2 | Avatar | `GET /users/avatars` · `PATCH /users/me/avatar` | JWT (cualquier rol) |
+| 3 | Chat | `GET /chat/general/state` · `GET/POST /chat/general/messages` · `PATCH/DELETE /chat/general/messages/:id` · `PUT/DELETE /chat/general/messages/:id/reaction` · `PUT /chat/general/read` · `GET /chat/general/updates` | JWT + flag + avatar |
+| 3 | Chat WS | namespace `/general` | JWT en handshake + avatar |
+| 4 | Proyectos | `/projects` CRUD · `/projects/:id/members` | JWT + membresía |
+| 4 | Tareas / Avances | `/projects/:projectId/tasks` · `/projects/:projectId/progress` | JWT + membresía |
+| 4 | Presupuesto | `/projects/:projectId/budget` (+ `/executions`) | JWT; mutaciones Admin/Coord |
+| 4 | Documentos | `/projects/:projectId/documents` (multipart; descarga = URL firmada) | JWT + membresía |
+| 4 | Reportes | `POST …/reports` → 202 · `GET …/reports/:id` (polling) | JWT |
+| 4 | Directorio | `GET /users/directory?q=` | Admin/Coord |
+| 4 | Admin usuarios | `/users` CRUD | Admin |
+| WS | Dominio | `/projects` (+ `join { projectId }`) · `/notifications` | JWT |
+| — | Webhook Notion | `POST /webhooks/notion` | Solo servidor-a-servidor |
 
-**Formato de error HTTP** (todos los endpoints):
+**Formato de error** (todas las rutas):
 
 ```json
-{ "statusCode": 400, "message": "content must not be empty", "path": "/api/v1/chat/general/messages", "timestamp": "2026-11-05T12:00:00.000Z" }
+{ "statusCode": 403, "message": "Choose an avatar before using the chat", "code": "AVATAR_REQUIRED", "path": "/api/v1/chat/general/messages", "timestamp": "2026-11-05T12:00:00.000Z" }
 ```
 
-`message` es siempre un `string` (los errores de validación vienen unidos con `, `). El `ValidationPipe` es estricto (`whitelist` + `forbidNonWhitelisted`): **cualquier propiedad extra en el body devuelve 400**.
-
-**Códigos que el cliente debe manejar:** `400` validación · `401` token ausente/expirado · `403` rol/membresía · `404` recurso o flag apagado · `413` body grande (límite JSON `1mb`) · `429` con header `Retry-After` (segundos; expuesto por CORS) · `5xx`.
+`code` es **opcional y estable** (hoy lo envían las rutas del chat); `message` es texto para humanos. Decide en el cliente por `statusCode` + `code`, nunca por `message`. El `ValidationPipe` es estricto: propiedades extra → 400. `429` siempre trae `Retry-After` (segundos).
 
 ---
 
-## 4. Autenticación (REST y WS comparten el mismo access token)
+## 4. Autenticación
 
 ```text
-POST /api/v1/auth/login    { email, password }
-→ 200 { accessToken, refreshToken, tokenType: "Bearer", expiresIn: 900 }
-
-POST /api/v1/auth/refresh  { refreshToken }
-→ 200 { accessToken, refreshToken, ... }     # el refresh ROTA: guarda el nuevo y descarta el viejo
-
-POST /api/v1/auth/logout   { refreshToken }
-→ 204
+POST /auth/login   { email, password }   → 200 { accessToken, refreshToken, tokenType, expiresIn: 900 }
+POST /auth/refresh { refreshToken }      → 200 { accessToken, refreshToken, … }   (rota: guarda el nuevo)
+POST /auth/logout  { refreshToken }      → 204
 ```
 
-Reglas que condicionan el cliente:
-
-1. **Access JWT ≈ 15 min** (`JWT_ACCESS_TTL`). REST: `Authorization: Bearer <accessToken>`.
-2. **Refresh rotativo con detección de reuso.** Reutilizar un refresh ya consumido revoca **toda la familia** (→ 401, hay que volver a loguear). Por eso las renovaciones deben ser **single-flight**: si varias peticiones reciben 401 a la vez, dispara **un solo** `/auth/refresh` y que las demás esperen su resultado (esta carrera fue el hallazgo QX-P5-001).
-3. **WebSocket:** el token se envía en `handshake.auth.token`. Los navegadores no pueden poner headers en un WebSocket, así que no uses `Authorization` allí (el servidor lo acepta como fallback solo para clientes no-navegador).
-4. **El JWT se valida solo al conectar.** Un socket ya abierto sigue autenticado aunque el access expire o el usuario se desactive. No hay re-auth en caliente: al reconectar hay que presentar un token **vigente** (§6.4).
-5. Guarda el `refreshToken` fuera de `localStorage` si el front lo permite (cookie `httpOnly` propia del BFF, memoria, o storage seguro en móvil).
-
-### Cliente HTTP mínimo con refresh single-flight (TypeScript)
-
-`toApiError` (parsea el JSON de error de §3) y `SessionExpiredError` son helpers tuyos; no vienen en `@quantia/contracts`.
+- Access JWT ≈ 15 min, `Authorization: Bearer`.
+- Refresh rotativo con detección de reuso: reutilizar uno ya usado revoca la familia. Haz el refresh **single-flight** (una sola petición aunque fallen varias a la vez).
+- Socket: el token va en `auth.token` del handshake. **Tras cada refresh**, envía `chat.general.reautenticar { token }` por el socket abierto (§7.3); si no, el servidor lo cierra al expirar el token + 30 s con `error { code: "TOKEN_EXPIRED" }`.
 
 ```ts
-const API = import.meta.env.VITE_API_URL; // p. ej. http://localhost:3000
-
+// http.ts — cliente HTTP con refresh single-flight
+const API = import.meta.env.VITE_API_URL;
 let accessToken = '';
 let refreshToken = '';
 let refreshing: Promise<void> | null = null;
+const refreshListeners = new Set<(token: string) => void>();
+
+export const onTokenRefreshed = (fn: (t: string) => void) => refreshListeners.add(fn);
 
 export async function login(email: string, password: string) {
   const res = await fetch(`${API}/api/v1/auth/login`, {
@@ -174,393 +159,528 @@ function refresh(): Promise<void> {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
     });
-    if (!res.ok) throw new SessionExpiredError(); // volver a /login
+    if (!res.ok) throw new SessionExpiredError();
     ({ accessToken, refreshToken } = await res.json());
+    refreshListeners.forEach((fn) => fn(accessToken)); // → reautenticar el socket
   })().finally(() => { refreshing = null; });
   return refreshing;
 }
 
-export async function api(path: string, init: RequestInit = {}, retried = false): Promise<Response> {
+export async function api<T>(path: string, init: RequestInit = {}, retried = false): Promise<T> {
   const res = await fetch(`${API}/api/v1${path}`, {
     ...init,
     headers: { ...init.headers, authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
   });
-  if (res.status === 401 && !retried) {
-    await refresh();
-    return api(path, init, true);
-  }
-  return res;
+  if (res.status === 401 && !retried) { await refresh(); return api(path, init, true); }
+  if (!res.ok) throw await toApiError(res); // { statusCode, code?, message, retryAfter? }
+  return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
-// Para el socket (§6): devuelve un access token vigente, renovándolo si le quedan <30 s.
 export async function getFreshAccessToken(): Promise<string> {
-  const b64 = accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); // JWT = base64url
+  const b64 = accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
   const { exp } = JSON.parse(atob(b64));
-  if (exp * 1000 - Date.now() < 30_000) await refresh();
+  if (exp * 1000 - Date.now() < 60_000) await refresh();
   return accessToken;
 }
 ```
 
----
-
-## 5. Contrato del Chat General
-
-### 5.1 REST
-
-Auth: Bearer. Cualquier rol activo. Flag apagado → **404**.
-
-#### `POST /api/v1/chat/general/messages`
-
-```json
-// request
-{ "content": "Hola semillero", "clientMessageId": "6f1c2a9e-0b7d-4a55-9e0e-2f6a1d3c8b11" }
-```
-
-- `content`: string, se hace `trim`, 1 – `CHAT_GENERAL_MESSAGE_MAX_LENGTH` (default 2000; tope duro del contrato 4000).
-- `clientMessageId` (opcional pero **recomendado**): 1–64 chars; clave de idempotencia **por autor** (`UNIQUE(authorId, clientMessageId)`). Un `randomUUID()` (36 chars) sirve.
-
-```json
-// 201 Created (primera vez) · 200 OK (reintento con el mismo clientMessageId)
-{
-  "message": {
-    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "content": "Hola semillero",
-    "clientMessageId": "6f1c2a9e-0b7d-4a55-9e0e-2f6a1d3c8b11",
-    "createdAt": "2026-11-05T12:00:00.000Z",
-    "author": { "id": "1111…", "name": "Ana Investigadora", "avatarUrl": null }
-  }
-}
-```
-
-> **La respuesta viene envuelta en `{ message }`.** Así lo devuelve el controlador y así lo verifica `test/chat-general.e2e-spec.ts`. El ejemplo de `chat-general.md` mostraba el DTO sin envolver; ya está corregido.
-
-Errores: `400` (vacío, demasiado largo, propiedad extra) · `401` · `404` (flag) · `429` (+`Retry-After`).
-
-#### `GET /api/v1/chat/general/messages?limit=30&cursor=<nextCursor>`
-
-```json
-{
-  "items": [ /* GeneralChatMessageDto, del MÁS NUEVO al MÁS ANTIGUO */ ],
-  "nextCursor": "MjAyNi0xMS0wNVQxMjowMDowMC4wMDBafGExYjJjM2Q0…",
-  "hasMore": true
-}
-```
-
-- Orden **descendente** (`createdAt desc, id desc`): `items[0]` es el último mensaje. Para pintar el chat, invierte el arreglo.
-- `nextCursor` apunta hacia atrás (mensajes más viejos); es **opaco** (base64url de `createdAt|id`), no lo construyas. `null` cuando `hasMore=false`.
-- `limit`: default 30, máx 100 (`CHAT_GENERAL_HISTORY_*`). Cursor inválido → `400`.
-- Paginación por cursor (no `page`/`pageSize`) a propósito: el feed es append-only.
-
-### 5.2 Socket.io — namespace `/general`
-
-| Aspecto | Valor |
-|---------|-------|
-| URL | `<API>/general` (ej. `http://localhost:3000/general`) |
-| Auth | `auth: { token: <accessToken> }` |
-| Transporte | `transports: ['websocket']` (obligatorio en cuanto haya >1 réplica; hoy Railway corre 1 réplica) |
-| Room | `general` (`CHAT_GENERAL_ROOM`), **auto-join** al conectar; el cliente no emite `join` |
-| Eventos cliente → servidor | **Ninguno** |
-
-Eventos servidor → cliente (nombres exactos, `ChatGeneralEvent`):
-
-| Evento | Payload | Cuándo |
-|--------|---------|--------|
-| `chat.general.presencia` | `{ users: PresenceUser[], generatedAt }` | **Solo al socket que se conecta**, una vez, tras autenticar y unirse |
-| `chat.general.usuario-conectado` | `{ user: PresenceUser, occurredAt }` | Cuando un usuario pasa de 0 → 1 sockets (a toda la room, incluido él mismo) |
-| `chat.general.usuario-desconectado` | `{ userId, occurredAt }` | Cuando se cierra el **último** socket de ese usuario |
-| `chat.general.mensaje-creado` | `{ message: GeneralChatMessageDto }` | Tras persistir un `POST`; a **toda** la room, **incluido el emisor** |
-| `error` | `{ message }` | Antes de desconectar si el chat está apagado o se superó el límite de conexiones |
-
-`PresenceUser = { id, name, avatarUrl: string | null }` — nunca email, roles ni tokens.
-
-Peculiaridades del handshake (derivadas de `general-realtime.gateway.ts`):
-
-- La autenticación ocurre **después** de que Socket.io ya aceptó el namespace. Un token inválido/ausente **no** produce `connect_error`: el cliente ve `connect` y casi de inmediato `disconnect` con motivo `"io server disconnect"`. Por eso `connect` **no** significa "autenticado": considera el chat listo cuando llega **`chat.general.presencia`**.
-- `"io server disconnect"` **desactiva la reconexión automática** del cliente Socket.io; hay que llamar a `socket.connect()` a mano.
+`toApiError` (lee `statusCode`, `code`, `message` y el header `Retry-After`) y `SessionExpiredError` son helpers tuyos.
 
 ---
 
-## 6. Flujo E2E y cliente de referencia
+## 5. Avatar obligatorio
 
-### 6.1 Secuencia completa
+1. Tras login: `GET /users/me` → `{ …, avatar: "AVATAR_03" | null, avatarRequired: boolean }`.
+2. Si `avatarRequired` → muestra un selector **bloqueante** con `GET /users/avatars`:
+
+```json
+{ "items": [
+  { "key": "AVATAR_01", "label": "Átomo", "color": "#4f46e5" },
+  { "key": "AVATAR_02", "label": "Microscopio", "color": "#0891b2" },
+  { "key": "AVATAR_03", "label": "Hoja", "color": "#16a34a" },
+  { "key": "AVATAR_04", "label": "Cohete", "color": "#ea580c" },
+  { "key": "AVATAR_05", "label": "Bombillo", "color": "#ca8a04" }
+] }
+```
+
+3. `PATCH /users/me/avatar { "avatar": "AVATAR_04" }` → `200 UserResponse`. Cualquier otro valor (URLs, base64, …) → 400. No existe subida de fotos.
+4. El cambio emite `chat.general.usuario-actualizado { user }` a quien esté en el chat → actualiza la tarjeta en presencia y en los mensajes de ese autor en memoria.
+
+Las imágenes **las empaqueta el front** (p. ej. `/avatars/avatar-01.svg`) mapeadas por `key`; `color` sirve de placeholder/anillo mientras cargan. `avatarUrl` sigue en los payloads por compatibilidad y es siempre `null`.
+
+Mientras no haya avatar: todas las rutas del chat → `403 { code: "AVATAR_REQUIRED" }` y el socket `/general` → `error { code: "AVATAR_REQUIRED" }` + desconexión. El resto de la API funciona normal.
+
+---
+
+## 6. REST del chat
+
+Todas: Bearer · flag activo · avatar elegido. Respuestas de mensaje siempre envueltas en `{ "message": GeneralChatMessageDto }`.
+
+### 6.1 Modelo de mensaje
+
+```json
+{
+  "id": "a1b2c3d4-…",
+  "seq": 1842,
+  "version": 3,
+  "content": "Texto plano (vacío si está borrado)",
+  "clientMessageId": "6f1c2a9e-…",
+  "createdAt": "2026-11-05T12:00:00.000Z",
+  "updatedAt": "2026-11-05T12:03:10.000Z",
+  "editedAt": "2026-11-05T12:01:00.000Z",
+  "deletedAt": null,
+  "author": { "id": "…", "name": "Ana", "avatar": "AVATAR_01", "avatarUrl": null },
+  "replyTo": {
+    "id": "…", "seq": 1840,
+    "author": { "id": "…", "name": "Beto", "avatar": "AVATAR_02", "avatarUrl": null },
+    "excerpt": "primeros 120 caracteres…",
+    "deleted": false
+  },
+  "reactions": [ { "emoji": "🔥", "count": 2, "userIds": ["…", "…"] } ]
+}
+```
+
+| Campo | Regla para el cliente |
+|-------|-----------------------|
+| `seq` | Orden canónico. **Ordena por `seq`**, nunca por relojes del cliente |
+| `version` | Sube con cada edición, borrado o cambio de reacciones. Al fusionar, gana la versión mayor y se ignora un evento con versión menor o igual |
+| `clientMessageId` | Eco del id que generó el cliente → reemplaza la burbuja optimista en su lugar (sin salto) |
+| `editedAt` | Si no es `null`, muestra "editado" |
+| `deletedAt` | Tombstone: `content: ""`, `reactions: []`, `replyTo: null`. El historial no lo incluye; el feed de cambios sí |
+| `replyTo.deleted` | La cita muestra "Mensaje eliminado" (`excerpt: null`) |
+| `reactions` | Orden fijo del allowlist (los chips no saltan). "Reaccioné yo" = `userIds.includes(me.id)` |
+| `content` | Texto plano normalizado (NFC, sin caracteres de control ni overrides bidi). **Píntalo como texto**, nunca como HTML |
+
+### 6.2 Endpoints
+
+| Método y ruta | Body / query | Respuesta | Evento |
+|---------------|--------------|-----------|--------|
+| `GET /chat/general/state` | — | `{ serverTime, latestSeq, lastReadSeq, unreadCount, readStates[{userId,lastReadSeq}], limits{messageMaxLength,editWindowSeconds,typingTtlMs,historyMaxLimit}, reactions[] }` | — |
+| `GET /chat/general/messages` | `?limit=30&cursor=` | `{ items (seq desc, sin borrados), nextCursor, hasMore }` | — |
+| `POST /chat/general/messages` | `{ content, clientMessageId?, replyToId? }` | **201** nuevo · **200** reintento idempotente | `mensaje-creado` |
+| `PATCH /chat/general/messages/:id` | `{ content }` | 200 `{ message }` (mismo texto = sin cambios) | `mensaje-editado` |
+| `DELETE /chat/general/messages/:id` | — | **204** (idempotente) | `mensaje-eliminado` |
+| `PUT /chat/general/messages/:id/reaction` | `{ emoji }` (`👍 ❤️ 😂 😮 😢 🙏 🔥 🎉`) | 200 `{ message }`; reemplaza la anterior | `reacciones-actualizadas` |
+| `DELETE /chat/general/messages/:id/reaction` | — | 200 `{ message }` | `reacciones-actualizadas` |
+| `PUT /chat/general/read` | `{ lastReadSeq }` | `{ lastReadSeq, unreadCount }` (solo avanza; se acota al último `seq`) | `lectura` (si avanzó) |
+| `GET /chat/general/updates` | `?since=<ISO>` o `?cursor=` · `&limit=` | `{ items (por updatedAt asc, con tombstones), nextCursor, hasMore, serverTime }` | — |
+
+Reglas de negocio:
+
+- **Editar:** solo el autor y dentro de `editWindowSeconds` (`403 EDIT_WINDOW_EXPIRED`). Admin **no** edita mensajes ajenos.
+- **Borrar:** el autor siempre; `ADMINISTRADOR` cualquiera (`byModerator: true` en el evento). Se vacía el contenido y se eliminan las reacciones.
+- **Responder:** `replyToId` debe ser un mensaje vivo (`400 REPLY_TARGET_NOT_FOUND`).
+- **Reacciones:** una por usuario y mensaje (como Telegram por defecto). Poner la misma otra vez = sin cambios.
+- **Idempotencia:** reintentar `POST` con el mismo `clientMessageId` devuelve el original (200) y **vuelve a emitir** `mensaje-creado`, así que un fanout que falló se recupera. Los clientes deduplican por `id`.
+- **Rate limit:** envíos, ediciones y borrados comparten `CHAT_GENERAL_RATE_LIMIT`/min; reacciones, leídos e historial usan el throttle general.
+
+Códigos de error del chat (`code`): `CHAT_DISABLED` (404) · `AVATAR_REQUIRED` (403) · `UNAUTHORIZED` (403, usuario inactivo) · `MESSAGE_NOT_FOUND` (404) · `NOT_MESSAGE_AUTHOR` (403) · `EDIT_WINDOW_EXPIRED` (403) · `REPLY_TARGET_NOT_FOUND` (400) · `INVALID_PAYLOAD` (400: vacío, largo, cursor). Los 429 no traen `code`: usa `Retry-After`.
+
+---
+
+## 7. Socket.io `/general`
+
+```ts
+io(`${API}/general`, { transports: ['websocket'], auth: (cb) => getFreshAccessToken().then((token) => cb({ token })) })
+```
+
+### 7.1 Handshake
+
+Orden de validación: flag → JWT → usuario activo → avatar → límite de sockets. Si algo falla, el servidor emite `error { code, message }` y desconecta:
+
+| `code` | Qué hacer |
+|--------|-----------|
+| `CHAT_DISABLED` | Mostrar "chat no disponible"; no reintentar |
+| `UNAUTHORIZED` | Refrescar el token; si falla, volver al login |
+| `AVATAR_REQUIRED` | Abrir el selector de avatar |
+| `TOO_MANY_CONNECTIONS` | Avisar "demasiadas pestañas"; reintentar con backoff largo |
+| `TOKEN_EXPIRED` | Reconectar (la función `auth` trae un token nuevo) |
+
+`connect` **no** significa listo (la autenticación es posterior). El chat está listo al recibir **`chat.general.presencia`**. Un corte del servidor llega como `disconnect` con motivo `"io server disconnect"`, que **no** reconecta solo: llama a `socket.connect()` con backoff.
+
+### 7.2 Servidor → cliente
+
+| Evento | Payload | Uso en UI |
+|--------|---------|-----------|
+| `chat.general.presencia` | `{ users[], typing[], generatedAt, tokenExpiresAt }` | Solo a ti, al conectar. Foto inicial de presencia y typing |
+| `chat.general.usuario-conectado` | `{ user, occurredAt }` | Entra a "en línea" (0→1 sockets) |
+| `chat.general.usuario-desconectado` | `{ userId, occurredAt, lastSeenAt }` | Sale de "en línea"; "visto por última vez" |
+| `chat.general.usuario-actualizado` | `{ user, occurredAt }` | Cambió de avatar: refresca su tarjeta |
+| `chat.general.mensaje-creado` | `{ message }` | Insertar (también te llega el tuyo) |
+| `chat.general.mensaje-editado` | `{ message }` | Reemplazar si `version` es mayor |
+| `chat.general.mensaje-eliminado` | `{ id, seq, version, deletedAt, byModerator }` | Animar colapso y quitar; marcar citas como borradas |
+| `chat.general.reacciones-actualizadas` | `{ messageId, seq, version, reactions, actorId, emoji }` | Reemplazar chips; "pop" si `emoji` no es null |
+| `chat.general.escribiendo` | `{ user, isTyping, expiresInMs }` | Mostrar/ocultar "escribiendo…"; ignora tu propio `user.id` |
+| `chat.general.lectura` | `{ userId, lastReadSeq, readAt }` | Ticks "visto" / "visto por N" |
+| `error` | `{ code, message }` | §7.1 |
+
+### 7.3 Cliente → servidor (con ack)
+
+| Evento | Payload | Ack |
+|--------|---------|-----|
+| `chat.general.escribiendo` | `{ isTyping: boolean }` | `{ ok: true }` · `{ ok: false, code: "RATE_LIMITED" \| "INVALID_PAYLOAD", error }` |
+| `chat.general.reautenticar` | `{ token }` (debe ser del mismo usuario) | `{ ok: true, tokenExpiresAt }` · `{ ok: false, code: "UNAUTHORIZED" }` |
+
+Typing: envía `true` al empezar a escribir y luego como mucho cada `typingTtlMs / 2` mientras sigas escribiendo; `false` al vaciar el campo, al perder foco o al enviar. El servidor solo reenvía el inicio y un refresco cada ~TTL/3 (no cada tecla), y en cada mensaje fija `expiresInMs`: si no llega refresco, oculta el indicador al vencer. Al desconectarse el último socket del usuario, el servidor manda `isTyping: false`. Además, al recibir `mensaje-creado` de un usuario, oculta su indicador.
+
+---
+
+## 8. Flujo E2E
 
 ```mermaid
 sequenceDiagram
   autonumber
-  participant UI as UI (Ana)
+  participant UI as Cliente (Ana)
   participant API as REST /api/v1
   participant WS as Socket /general
-  participant R as Redis (pub/sub + presencia)
-  participant UI2 as UI (Beto)
+  participant R as Redis
+  participant UI2 as Cliente (Beto)
 
-  UI->>API: POST /auth/login
-  API-->>UI: accessToken + refreshToken
-  UI->>WS: connect (auth.token)
-  WS->>R: presencia join (Lua)
-  WS-->>UI: chat.general.presencia {users}
-  WS-->>UI2: chat.general.usuario-conectado {Ana}
-  UI->>API: GET /chat/general/messages?limit=30
-  API-->>UI: items (desc) + nextCursor
-  Note over UI: merge(historial, eventos bufferizados) → pinta ascendente
-  UI->>UI: mensaje optimista (clientMessageId)
-  UI->>API: POST /chat/general/messages
-  API->>API: persist en Postgres
-  API->>R: PUBLISH quantia:realtime
-  API-->>UI: 201 { message }
-  R-->>WS: bridge → emit a room general
-  WS-->>UI: mensaje-creado (dedupe por id/clientMessageId)
-  WS-->>UI2: mensaje-creado → pinta
+  UI->>API: POST /auth/login → tokens
+  UI->>API: GET /users/me
+  alt avatarRequired
+    UI->>API: GET /users/avatars → PATCH /users/me/avatar
+  end
+  UI->>WS: connect(auth.token)
+  WS-->>UI: presencia {users, typing, tokenExpiresAt}
+  WS-->>UI2: usuario-conectado {Ana}
+  UI->>API: GET /chat/general/state + GET /messages?limit=30
+  Note over UI: pinta, "N nuevos" desde lastReadSeq, guarda serverTime
+  UI->>WS: escribiendo {true}
+  WS-->>UI2: escribiendo {Ana, true, 6000}
+  UI->>UI: burbuja optimista (clientMessageId)
+  UI->>API: POST /messages {content, clientMessageId, replyToId?}
+  API->>API: persiste (seq, version 1)
+  API->>R: PUBLISH
+  API-->>UI: 201 {message}
+  R-->>WS: bridge → room general
+  WS-->>UI: mensaje-creado (dedupe)
+  WS-->>UI2: mensaje-creado → inserta y oculta "escribiendo"
+  UI2->>API: PUT /read {lastReadSeq}
+  WS-->>UI: lectura {Beto, seq} → doble tick
+  Note over UI: refresh JWT → emit reautenticar {token}
+  Note over UI,WS: corte de red
+  UI->>WS: reconnect → presencia
+  UI->>API: GET /updates?since=serverTime-5s (paginar hasta hasMore=false)
 ```
 
-### 6.2 Orden de arranque recomendado
+### 8.1 Arranque
 
-1. `login` → `GET /users/me` (guarda `id` propio para marcar "mis mensajes").
-2. Abre el socket y **empieza a bufferizar** `mensaje-creado`.
-3. Al llegar `chat.general.presencia` → estado `ready`; pinta usuarios en línea.
-4. `GET /chat/general/messages?limit=30`; fusiona con lo bufferizado (por `id`), ordena ascendente por `createdAt` (desempate `id`) y vacía el buffer.
-5. Scroll hacia arriba → siguiente página con `nextCursor`.
+1. Login → `GET /users/me` → avatar si falta.
+2. Abre el socket y **bufferiza** eventos hasta hidratar.
+3. Al recibir `presencia`: carga presencia y typing.
+4. `GET /chat/general/state` (no leídos, `readStates`, `limits`, `reactions`) y `GET /messages?limit=30`.
+5. Aplica el buffer sobre el historial con las reglas de §9 y guarda `syncPoint = state.serverTime`.
+6. Scroll arriba → `?cursor=nextCursor`. Mantén el ancla de scroll al insertar arriba.
 
-Abrir el socket **antes** del `GET` evita la ventana en la que un mensaje se persiste entre el historial y la suscripción.
+### 8.2 Reconexión sin huecos
 
-### 6.3 Cliente de referencia (TypeScript + socket.io-client)
+Al recibir de nuevo `presencia` tras un corte:
+
+```text
+GET /chat/general/updates?since=<syncPoint − 5 s>&limit=100
+  repetir con ?cursor=nextCursor mientras hasMore
+  aplicar cada item con la regla de version (tombstones incluidos)
+syncPoint = serverTime de la última respuesta
+```
+
+Los 5 s de solape cubren escrituras concurrentes al corte; como la regla de `version` es idempotente, repetir items no hace daño. Si el corte fue muy largo (días), recarga la primera página de historial y descarta el estado viejo.
+
+---
+
+## 9. Reglas de estado (reducer)
+
+```ts
+import type { GeneralChatMessageDto as Msg } from '@quantia/contracts';
+
+type Local = Msg & { status?: 'sending' | 'failed' };
+const byId = new Map<string, Local>();
+const pendingByClientId = new Map<string, string>(); // clientMessageId → id local
+
+export function applyMessage(incoming: Msg) {
+  const localId = incoming.clientMessageId && pendingByClientId.get(incoming.clientMessageId);
+  if (localId) { byId.delete(localId); pendingByClientId.delete(incoming.clientMessageId!); }
+  const current = byId.get(incoming.id);
+  if (current && current.version >= incoming.version) return;   // evento viejo o repetido
+  if (incoming.deletedAt) { byId.delete(incoming.id); markRepliesDeleted(incoming.id); return; }
+  byId.set(incoming.id, incoming);
+}
+
+export function applyDeleted(e: { id: string; version: number }) {
+  const current = byId.get(e.id);
+  if (current && current.version >= e.version) return;
+  byId.delete(e.id); markRepliesDeleted(e.id);
+}
+
+export function applyReactions(e: { messageId: string; version: number; reactions: Msg['reactions'] }) {
+  const current = byId.get(e.messageId);
+  if (!current || current.version >= e.version) return;
+  byId.set(e.messageId, { ...current, reactions: e.reactions, version: e.version });
+}
+
+function markRepliesDeleted(parentId: string) {
+  for (const m of byId.values())
+    if (m.replyTo?.id === parentId) m.replyTo = { ...m.replyTo, deleted: true, excerpt: null };
+}
+
+export const sorted = () => [...byId.values()].sort((a, b) => a.seq - b.seq);
+```
+
+La burbuja optimista usa `seq: Number.MAX_SAFE_INTEGER` (va al final) y `status: 'sending'`; al llegar la respuesta o el evento con su `clientMessageId` se reemplaza por la real. Si `POST` falla con 5xx o red, reintenta con el **mismo** `clientMessageId`; con 4xx márcala `failed`. Cuando un mensaje se edita, actualiza también `excerpt` de las respuestas que lo citan en memoria (el servidor no reescribe citas antiguas).
+
+---
+
+## 10. Cliente de referencia
 
 ```ts
 import { io, type Socket } from 'socket.io-client';
 import {
-  ChatGeneralEvent,
-  type GeneralChatMessageDto,
-  type GeneralChatHistoryResponse,
-  type ChatGeneralPresenciaPayload,
-  type ChatGeneralUsuarioConectadoPayload,
-  type ChatGeneralUsuarioDesconectadoPayload,
-  type ChatGeneralMensajeCreadoPayload,
-  type PresenceUser,
+  ChatGeneralClientEvent as C, ChatGeneralErrorCode as E, ChatGeneralEvent as Ev,
+  type ChatGeneralAck, type GeneralChatStateResponse, type GeneralChatHistoryResponse,
+  type GeneralChatUpdatesResponse, type GeneralChatMessageEnvelope, type PresenceUser,
 } from '@quantia/contracts';
-import { api, getFreshAccessToken } from './http'; // §4
-
-type Status = 'connecting' | 'ready' | 'reconnecting' | 'disabled' | 'unauthorized';
+import { api, getFreshAccessToken, onTokenRefreshed } from './http';
+import { applyMessage, applyDeleted, applyReactions } from './reducer';
 
 export class GeneralChat {
-  private socket!: Socket;
-  private messages = new Map<string, GeneralChatMessageDto>(); // por id
-  private pending = new Map<string, string>();                 // clientMessageId → id optimista
-  private online = new Map<string, PresenceUser>();
-  private buffer: GeneralChatMessageDto[] = [];
+  socket!: Socket;
+  online = new Map<string, PresenceUser>();
+  typing = new Map<string, number>();           // userId → timer
+  readStates = new Map<string, number>();       // userId → lastReadSeq
+  state?: GeneralChatStateResponse;
+  private syncPoint?: string;
   private hydrated = false;
+  private buffer: Array<() => void> = [];
   private retries = 0;
-  status: Status = 'connecting';
+  private typingSentAt = 0;
 
-  constructor(private onChange: () => void) {}
+  constructor(private me: PresenceUser, private render: () => void) {}
 
   connect() {
     this.socket = io(`${import.meta.env.VITE_API_URL}/general`, {
       transports: ['websocket'],
-      // función → se evalúa en CADA (re)conexión con un token vigente
       auth: (cb) => { void getFreshAccessToken().then((token) => cb({ token })); },
-      reconnection: true,
-      reconnectionDelay: 1_000,
-      reconnectionDelayMax: 10_000,
     });
+    const later = (fn: () => void) => (this.hydrated ? fn() : this.buffer.push(fn));
 
-    this.socket.on(ChatGeneralEvent.PRESENCIA, (p: ChatGeneralPresenciaPayload) => {
+    this.socket.on(Ev.PRESENCIA, async (p) => {
       this.retries = 0;
-      this.online = new Map(p.users.map((u) => [u.id, u]));
-      void this.hydrate().then((ok) => {
-        if (ok) this.status = 'ready';
-        this.onChange();
-      });
+      this.online = new Map(p.users.map((u: PresenceUser) => [u.id, u]));
+      p.typing.forEach((u: PresenceUser) => this.showTyping(u.id, this.state?.limits.typingTtlMs ?? 6000));
+      await (this.syncPoint ? this.catchUp() : this.bootstrap());
+      this.buffer.splice(0).forEach((fn) => fn());
+      this.hydrated = true;
+      this.render();
     });
-    this.socket.on(ChatGeneralEvent.USUARIO_CONECTADO, (p: ChatGeneralUsuarioConectadoPayload) => {
-      this.online.set(p.user.id, p.user); this.onChange();
-    });
-    this.socket.on(ChatGeneralEvent.USUARIO_DESCONECTADO, (p: ChatGeneralUsuarioDesconectadoPayload) => {
-      this.online.delete(p.userId); this.onChange();
-    });
-    this.socket.on(ChatGeneralEvent.MENSAJE_CREADO, ({ message }: ChatGeneralMensajeCreadoPayload) => {
-      if (!this.hydrated) this.buffer.push(message); else this.upsert(message);
-      this.onChange();
-    });
-
-    // El servidor avisa el motivo justo antes de cortar.
-    this.socket.on('error', (e: { message: string }) => {
-      if (/not enabled/i.test(e.message)) this.status = 'disabled';
-      // 'Too many connections' → ver §7
+    this.socket.on(Ev.USUARIO_CONECTADO, ({ user }) => { this.online.set(user.id, user); this.render(); });
+    this.socket.on(Ev.USUARIO_DESCONECTADO, ({ userId }) => { this.online.delete(userId); this.hideTyping(userId); this.render(); });
+    this.socket.on(Ev.USUARIO_ACTUALIZADO, ({ user }) => { if (this.online.has(user.id)) this.online.set(user.id, user); this.render(); });
+    this.socket.on(Ev.MENSAJE_CREADO, ({ message }) => later(() => { applyMessage(message); this.hideTyping(message.author.id); this.render(); }));
+    this.socket.on(Ev.MENSAJE_EDITADO, ({ message }) => later(() => { applyMessage(message); this.render(); }));
+    this.socket.on(Ev.MENSAJE_ELIMINADO, (e) => later(() => { applyDeleted(e); this.render(); }));
+    this.socket.on(Ev.REACCIONES_ACTUALIZADAS, (e) => later(() => { applyReactions(e); this.render(); }));
+    this.socket.on(Ev.LECTURA, ({ userId, lastReadSeq }) => { this.readStates.set(userId, lastReadSeq); this.render(); });
+    this.socket.on(Ev.ESCRIBIENDO, ({ user, isTyping, expiresInMs }) => {
+      if (user.id === this.me.id) return;
+      isTyping ? this.showTyping(user.id, expiresInMs) : this.hideTyping(user.id);
+      this.render();
     });
 
+    this.socket.on('error', (e: { code: string }) => {
+      if (e.code === E.CHAT_DISABLED || e.code === E.AVATAR_REQUIRED) this.retries = Infinity;
+    });
     this.socket.on('disconnect', (reason) => {
-      this.hydrated = false;           // al volver, se re-hidrata (§6.5)
-      if (this.status !== 'disabled') this.status = 'reconnecting';
-      if (reason === 'io server disconnect' && this.status !== 'disabled') {
-        // El cliente NO reintenta solo en este caso: backoff manual con tope.
-        const wait = Math.min(1_000 * 2 ** this.retries++, 30_000);
-        if (this.retries > 6) { this.status = 'unauthorized'; this.onChange(); return; }
-        setTimeout(() => this.socket.connect(), wait);
-      }
-      this.onChange();
+      this.hydrated = false;
+      if (reason !== 'io server disconnect' || this.retries === Infinity) return;
+      const wait = Math.min(1000 * 2 ** this.retries++, 30_000);
+      setTimeout(() => this.socket.connect(), wait);
+    });
+
+    // Mantener vivo el socket tras cada refresh del JWT (sin parpadeo de presencia).
+    onTokenRefreshed((token) => {
+      void this.socket.timeout(5000).emitWithAck(C.REAUTENTICAR, { token }).catch(() => undefined);
     });
   }
 
-  /**
-   * Historial + buffer → estado consistente. También se usa tras reconectar.
-   * Ejemplo simplificado: trae solo la primera página (ver §6.5 para cortes largos).
-   */
-  private async hydrate(): Promise<boolean> {
-    const res = await api('/chat/general/messages?limit=30');
-    if (res.status === 404) { this.status = 'disabled'; return false; }
-    if (!res.ok) return false;       // la UI puede reintentar / mostrar error
-    const page: GeneralChatHistoryResponse = await res.json();
-    for (const m of page.items) this.upsert(m);
-    for (const m of this.buffer.splice(0)) this.upsert(m);
-    this.hydrated = true;
-    return true;
+  private async bootstrap() {
+    this.state = await api<GeneralChatStateResponse>('/chat/general/state');
+    this.state.readStates.forEach((r) => this.readStates.set(r.userId, r.lastReadSeq));
+    const page = await api<GeneralChatHistoryResponse>('/chat/general/messages?limit=30');
+    page.items.forEach(applyMessage);
+    this.syncPoint = this.state.serverTime;
   }
 
-  private upsert(m: GeneralChatMessageDto) {
-    // Reemplaza el mensaje optimista si este es el eco/confirmación del mío.
-    const optimisticId = m.clientMessageId ? this.pending.get(m.clientMessageId) : undefined;
-    if (optimisticId) { this.messages.delete(optimisticId); this.pending.delete(m.clientMessageId!); }
-    this.messages.set(m.id, m);
+  private async catchUp() {
+    let since = new Date(Date.parse(this.syncPoint!) - 5000).toISOString();
+    let cursor: string | null = null;
+    let res: GeneralChatUpdatesResponse;
+    do {
+      const q = cursor ? `cursor=${encodeURIComponent(cursor)}` : `since=${encodeURIComponent(since)}`;
+      res = await api<GeneralChatUpdatesResponse>(`/chat/general/updates?${q}&limit=100`);
+      res.items.forEach(applyMessage);
+      cursor = res.nextCursor;
+    } while (res.hasMore);
+    this.syncPoint = res.serverTime;
   }
 
-  /** Lista lista para pintar (ascendente). */
-  get list(): GeneralChatMessageDto[] {
-    return [...this.messages.values()].sort(
-      (a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
-    );
-  }
-
-  async send(content: string, me: PresenceUser) {
+  send(content: string, replyToId?: string) {
     const clientMessageId = crypto.randomUUID();
-    const optimisticId = `local:${clientMessageId}`;
-    this.pending.set(clientMessageId, optimisticId);
-    this.messages.set(optimisticId, {
-      id: optimisticId, content, clientMessageId,
-      createdAt: new Date().toISOString(), author: me,
-    });
-    this.onChange();
+    // → insertar optimista (status 'sending', seq MAX_SAFE_INTEGER) y luego:
+    void this.stopTyping();
+    return api<GeneralChatMessageEnvelope>('/chat/general/messages', {
+      method: 'POST', body: JSON.stringify({ content, clientMessageId, replyToId }),
+    }).then(({ message }) => applyMessage(message));
+  }
+  edit = (id: string, content: string) =>
+    api<GeneralChatMessageEnvelope>(`/chat/general/messages/${id}`, { method: 'PATCH', body: JSON.stringify({ content }) })
+      .then(({ message }) => applyMessage(message));
+  remove = (id: string) => api<void>(`/chat/general/messages/${id}`, { method: 'DELETE' });
+  react = (id: string, emoji: string) =>
+    api<GeneralChatMessageEnvelope>(`/chat/general/messages/${id}/reaction`, { method: 'PUT', body: JSON.stringify({ emoji }) })
+      .then(({ message }) => applyMessage(message));
+  unreact = (id: string) =>
+    api<GeneralChatMessageEnvelope>(`/chat/general/messages/${id}/reaction`, { method: 'DELETE' })
+      .then(({ message }) => applyMessage(message));
 
-    try {
-      const res = await api('/chat/general/messages', {
-        method: 'POST',
-        body: JSON.stringify({ content, clientMessageId }),
-      });
-      if (res.status === 201 || res.status === 200) {
-        this.upsert((await res.json()).message);          // 200 = reintento idempotente
-      } else if (res.status === 429) {
-        const wait = Number(res.headers.get('Retry-After') ?? 5);
-        throw new RateLimited(wait);                      // deshabilita el input `wait` s
-      } else {
-        throw await toApiError(res);
-      }
-    } catch (err) {
-      this.messages.delete(optimisticId); this.pending.delete(clientMessageId);
-      this.onChange();
-      throw err;       // 5xx/red: reintentar con el MISMO clientMessageId, no uno nuevo
-    }
-    this.onChange();
+  /** Llamar en cada input; envía como mucho cada TTL/2. */
+  onInput(text: string) {
+    if (!text) return void this.stopTyping();
+    const ttl = this.state?.limits.typingTtlMs ?? 6000;
+    if (Date.now() - this.typingSentAt < ttl / 2) return;
+    this.typingSentAt = Date.now();
+    void this.socket.emitWithAck(C.ESCRIBIENDO, { isTyping: true }).then((ack: ChatGeneralAck) => ack);
+  }
+  stopTyping() {
+    if (!this.typingSentAt) return;
+    this.typingSentAt = 0;
+    return this.socket.emitWithAck(C.ESCRIBIENDO, { isTyping: false });
   }
 
-  disconnect() { this.socket?.disconnect(); }
+  /** Llamar (con debounce ~1 s) con el seq del último mensaje visible. */
+  markRead = (seq: number) =>
+    api<{ lastReadSeq: number; unreadCount: number }>('/chat/general/read', { method: 'PUT', body: JSON.stringify({ lastReadSeq: seq }) });
+
+  private showTyping(userId: string, ms: number) {
+    clearTimeout(this.typing.get(userId));
+    this.typing.set(userId, window.setTimeout(() => { this.typing.delete(userId); this.render(); }, ms));
+  }
+  private hideTyping(userId: string) { clearTimeout(this.typing.get(userId)); this.typing.delete(userId); }
 }
 ```
 
-Puntos clave del diseño:
+---
 
-- **Dedupe:** el emisor recibe su propio `mensaje-creado` y la respuesta del `POST`; llegan en cualquier orden. `upsert` indexa por `id` y sustituye el optimista por `clientMessageId`, así que da igual cuál llegue primero.
-- **`clientMessageId` siempre:** convierte los reintentos en idempotentes (200 con el mismo mensaje).
-- **Usuarios en línea:** `presencia` es la foto inicial; luego aplica `usuario-conectado/desconectado` como deltas. Una persona con 3 pestañas aparece **una vez**.
+## 11. Animaciones fluidas (qué te da el backend para cada una)
 
-### 6.4 Renovación del token y el socket
+| Efecto | Dato del backend | Recomendación |
+|--------|------------------|---------------|
+| Enviar sin salto | `clientMessageId` + respuesta/eco con el mismo id | La burbuja optimista conserva su `key` de React/Vue: usa `clientMessageId ?? id` como key para que el swap no remonte el nodo |
+| Estados ⏱ → ✓ → ✓✓ | `status` local → respuesta 201 → `lectura` / `readStates` | ✓✓ cuando algún otro usuario tiene `lastReadSeq >= msg.seq`; "visto por N" = cuántos |
+| Inserción ordenada | `seq` | Inserta por `seq` (FLIP/layout animation); nunca reordenes por reloj local |
+| "N mensajes nuevos" | `state.lastReadSeq`, `unreadCount` | Divisor antes del primer `seq > lastReadSeq` ajeno |
+| Agrupar burbujas | `author.id` + `createdAt` | Mismo autor y < 5 min → misma burbuja-grupo; avatar solo en la última |
+| Separadores de día | `createdAt` (UTC ISO) | Formatea en la zona del usuario; usa `serverTime` para corregir el desfase del reloj |
+| Editar (crossfade) | `mensaje-editado` + `version` | Anima solo si `version` sube; muestra "editado" con `editedAt` |
+| Borrar (colapso) | `mensaje-eliminado` | Anima altura → 0 y luego quita; con `byModerator` muestra "eliminado por moderación" en tus propios mensajes |
+| Reacción "pop" | `reacciones-actualizadas` (`actorId`, `emoji`) | Pop/burst solo en el chip de `emoji`; si `actorId === me.id` ya animaste al tocar (UI optimista) |
+| Escribiendo… | `escribiendo` (`expiresInMs`) | Tres puntos con fade; timer por usuario con `expiresInMs`; varios: "Ana y Beto están escribiendo" |
+| Entrar/salir en línea | `usuario-conectado/desconectado` (0→1 / último socket) | Sin parpadeo multi-pestaña: el servidor ya deduplica |
+| Cargar más antiguos | `nextCursor` | Conserva el ancla de scroll (mide la altura antes y después de insertar) |
+| Citas | `replyTo.excerpt`, `replyTo.seq` | Tap → scroll al `seq`; si no está cargado, pagina hasta encontrarlo |
 
-- El socket abierto no se cae al expirar el access (solo se valida en el handshake), pero **cada reconexión** necesita un token vigente. Pasar `auth` como **función** (arriba) hace que Socket.io la evalúe en cada intento y reutilice `getFreshAccessToken()`.
-- No cierres/abras el socket cada vez que refrescas el token: no hace falta y generaría parpadeo de presencia.
-- Al hacer logout: `POST /auth/logout` y `socket.disconnect()`.
-- Si el refresh falla (401 de `/auth/refresh`) → sesión muerta: desconecta el socket y vuelve al login.
+Todos los eventos traen el **objeto completo** (no hace falta refetch para animar) y son **idempotentes** bajo la regla de `version`, así que puedes animar en cuanto llegan sin miedo a duplicados.
 
-### 6.5 Reconexión sin perder mensajes
+---
 
-Mientras el socket estuvo caído **no hay replay**. Al volver a recibir `presencia` (que llega en cada conexión nueva), `hydrate()` vuelve a pedir `GET …?limit=30` y fusiona por `id`. Si el corte fue largo y la primera página no solapa con lo que ya tienes (`hasMore=true` y ningún `id` conocido), sigue pidiendo con `nextCursor` hasta encontrar solapamiento o hasta un máximo razonable (p. ej. 5 páginas).
-
-### 6.6 Probar rápido sin front (Node)
+## 12. Pruebas rápidas
 
 ```bash
-TOKEN=$(curl -sS -X POST http://localhost:3000/api/v1/auth/login \
-  -H 'content-type: application/json' \
+TOKEN=$(curl -sS -X POST http://localhost:3000/api/v1/auth/login -H 'content-type: application/json' \
   -d '{"email":"researcher@quantia.local","password":"ResearchPass1!"}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).accessToken')
 export TOKEN
 ```
 
-Escuchar (terminal 1):
+Escuchar todo (terminal 1):
 
 ```bash
 node -e "
 const { io } = require('socket.io-client');
 const s = io('http://127.0.0.1:3000/general', { auth: { token: process.env.TOKEN }, transports: ['websocket'] });
-for (const e of ['chat.general.presencia','chat.general.usuario-conectado','chat.general.usuario-desconectado','chat.general.mensaje-creado','error','disconnect'])
-  s.on(e, (p) => console.log(e, JSON.stringify(p)));
+s.onAny((e, p) => console.log(e, JSON.stringify(p)));
+s.on('chat.general.presencia', () => s.emit('chat.general.escribiendo', { isTyping: true }, console.log));
 "
 ```
 
-Enviar (terminal 2) — el listener debe imprimir `chat.general.mensaje-creado`:
+Enviar, editar, reaccionar y borrar (terminal 2):
 
 ```bash
-curl -sS -X POST http://localhost:3000/api/v1/chat/general/messages \
-  -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' \
-  -d '{"content":"hola desde curl","clientMessageId":"curl-001"}'
+MID=$(curl -sS -X POST http://localhost:3000/api/v1/chat/general/messages -H "authorization: Bearer $TOKEN" \
+  -H 'content-type: application/json' -d '{"content":"hola","clientMessageId":"curl-1"}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).message.id')
 ```
 
-Repetir el mismo `curl` devuelve **200** con el mismo `id` y **no** emite un segundo evento.
+```bash
+curl -sS -X PATCH "http://localhost:3000/api/v1/chat/general/messages/$MID" -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' -d '{"content":"hola (editado)"}'
+```
 
-Pruebas negativas útiles: sin `Authorization` → 401; sin `auth.token` en el socket → `disconnect` (`io server disconnect`); 21 `POST` en un minuto → 429 con `Retry-After`.
+```bash
+curl -sS -X PUT "http://localhost:3000/api/v1/chat/general/messages/$MID/reaction" -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' -d '{"emoji":"🔥"}'
+```
 
-La batería automatizada equivalente: `npm run test:e2e -- --testPathPatterns='chat-general|realtime'` (requiere Postgres + Redis).
+```bash
+curl -sS -X DELETE "http://localhost:3000/api/v1/chat/general/messages/$MID" -H "authorization: Bearer $TOKEN" -o /dev/null -w '%{http_code}\n'
+```
 
-### 6.7 Bruno
+Avatar obligatorio: inicia sesión con `researcher-b@quantia.local` y llama `GET /chat/general/messages` → `403 AVATAR_REQUIRED`; después `PATCH /users/me/avatar` y repite.
 
-`bruno/Chat Create Message.bru` existe pero está incompleto (`body: none`, sin ejemplo) y no hay request de historial. Hasta completarlo, usa los `curl` de arriba.
+Bruno: carpeta [`bruno/chat/`](../../bruno/chat/) + `users/Avatars` y `users/Set My Avatar` (`Send Message` guarda `messageId` para el resto).
 
----
+Suite automatizada:
 
-## 7. Riesgos conocidos al integrar (hallazgos de la revisión)
-
-Son comportamientos reales del código actual, no hipótesis. Ninguno se corrigió en esta revisión (solo documentación).
-
-| # | Hallazgo | Impacto en el cliente | Mitigación |
-|---|----------|-----------------------|------------|
-| 1 | **Límite de sockets por usuario = 5** y cada pestaña completa abre hasta 3 (`/projects`, `/notifications`, `/general`) | Con 2 pestañas completas (6 sockets) la última conexión se rechaza con `error: "Too many connections"` + `disconnect`. Puede caer justo `/general` | Subir `WS_MAX_CONNECTIONS_PER_USER` (≥ 9) o conectar solo los namespaces que la vista usa; compartir un socket entre pestañas (`SharedWorker`/`BroadcastChannel`). El doc de chat ya sugiere 8 |
-| 2 | El contador `ws:conn:<userId>` solo se libera en `handleDisconnect`. `main.ts` **no** llama a `enableShutdownHooks()` (solo el worker maneja `SIGTERM`) | Tras un redeploy/crash de Railway pueden quedar sockets "fantasma" en Redis que cuentan contra el límite (la clave expira a 24 h pero se renueva en cada conexión nueva). Un usuario podría quedar bloqueado con `Too many connections` aunque no tenga sockets reales | Borrar `ws:conn:<userId>` en Redis como remedio operativo; recomendable corregirlo en backend (hooks de shutdown / TTL por socket). Mostrar un mensaje claro en la UI para el caso `Too many connections` |
-| 3 | Si el `POST` persiste el mensaje pero falla la publicación a Redis, responde 5xx. El reintento con el mismo `clientMessageId` devuelve **200 sin volver a emitir** (`returns existing message on P2002 without re-emitting`) | Los demás clientes no ven ese mensaje en vivo; lo verán en la siguiente hidratación del historial | Reintentar siempre con el mismo `clientMessageId`; refrescar historial periódicamente o al volver el foco de la pestaña |
-| 4 | Con `transports: ['websocket']` el `upgrade` no pasa por el middleware CORS de Socket.io | La allowlist `CORS_ORIGINS` **no** protege el socket; la protección real es el JWT. No confíes en CORS como control del WS | Mantener JWT corto y validado; no relajar `iss/aud` |
-| 5 | El socket no re-valida el token ni el estado del usuario tras conectar | Un usuario desactivado o con token expirado sigue recibiendo mensajes hasta que se desconecte | Forzar `disconnect` + login en el cliente al recibir 401 de refresh; backend: desconexión forzada al desactivar (no implementado) |
-| 6 | Los endpoints del chat no tienen schema de respuesta en OpenAPI | Generadores de clientes (`openapi-typescript`, etc.) producirán `unknown` | Usar `@quantia/contracts` (`generalChatMessageSchema`, `generalChatHistoryResponseSchema`) para tipar/validar |
-| 7 | La documentación previa mostraba el `POST` sin envolver en `{ message }` | Un cliente basado en ese ejemplo leería `undefined` | Corregido en `chat-general.md` y en esta guía |
+```bash
+npm run test:e2e -- --testPathPatterns='chat-general|realtime'
+```
 
 ---
 
-## 8. Checklist de integración
+## 13. Riesgos y límites que siguen vigentes
 
-**Backend / entorno**
+| # | Tema | Detalle | Mitigación |
+|---|------|---------|------------|
+| 1 | CORS y WebSocket | Con `transports: ['websocket']` el upgrade no pasa por el middleware CORS; la protección real es el JWT | Mantener JWT corto (15 min) y la reautenticación/expiración del socket |
+| 2 | Tarjeta en typing tras cambiar avatar | El socket guarda la tarjeta del usuario al conectar o reautenticar; el avatar de sus eventos de typing se actualiza en la siguiente reautenticación | El cliente aplica `usuario-actualizado` sobre su mapa de usuarios y pinta typing con ese mapa |
+| 3 | Orden de commit vs `updatedAt` | Dos escrituras simultáneas pueden confirmarse fuera del orden de su `updatedAt` por milisegundos | Solape de 5 s en `since` + regla de `version` (idempotente) |
+| 4 | `reactions[].userIds` | Lista completa de quién reaccionó; crece con el número de usuarios | Adecuado para el tamaño del semillero; si crece, paginar "quién reaccionó" |
+| 5 | Borrado | Se vacía el contenido en BD (no hay "papelera" ni recuperación) | Intencional por privacidad; la fila queda como tombstone para sincronizar |
+| 6 | Railway `preserve()` | Valores viejos de staging (`WS_MAX_CONNECTIONS_PER_USER=5`, flag) no se sobrescriben solos | Revisar variables en Railway antes de desplegar |
 
-- [ ] `CHAT_GENERAL_ENABLED=true` y migración `20260925200000_chat_general_messages` aplicada.
-- [ ] `CORS_ORIGINS` contiene el origen exacto del front (esquema + host + puerto); el front no corre en el mismo puerto que la API.
-- [ ] Redis accesible (`/health` OK).
-- [ ] `WS_MAX_CONNECTIONS_PER_USER` dimensionado a los namespaces × pestañas esperados (§7-1).
+Corregido en v2 respecto a la revisión anterior: contadores de sockets "fantasma" tras redeploys (ZSET con heartbeat + `enableShutdownHooks`), límite de 5 sockets (ahora 10), mensaje persistido sin fanout (el reintento re-emite), socket vivo con token expirado (cierre a `exp` + gracia), OpenAPI sin schemas de respuesta del chat.
+
+---
+
+## 14. Checklist
+
+**Backend**
+
+- [ ] Migración `20261105000000_chat_general_v2_avatars` aplicada (`prisma migrate deploy`).
+- [ ] `CHAT_GENERAL_ENABLED` no está en `false`; `WS_MAX_CONNECTIONS_PER_USER` ≥ 10 en Railway.
+- [ ] `CORS_ORIGINS` con el origen exacto del front.
 
 **Cliente**
 
-- [ ] Login + refresh **single-flight**; el refresh nuevo reemplaza al anterior.
-- [ ] Socket: `transports: ['websocket']`, `auth` como función, namespace `/general`.
-- [ ] El chat se considera "listo" al recibir `chat.general.presencia`, no en `connect`.
-- [ ] Reconexión manual con backoff cuando el motivo es `io server disconnect`; estados `disabled` / `unauthorized` en la UI.
-- [ ] Historial en orden descendente invertido para pintar; paginación con `nextCursor` opaco.
-- [ ] `clientMessageId` en todo envío; dedupe por `id`/`clientMessageId`; reintento con el mismo id.
-- [ ] Manejo de `429` con `Retry-After`, `400` (vacío/largo/propiedad extra), `404` (flag), `401` (refresh).
-- [ ] Re-hidratar historial tras cada reconexión.
-- [ ] Presencia: snapshot + deltas; una persona = una entrada.
+- [ ] Selector de avatar bloqueante cuando `avatarRequired`; manejo de `AVATAR_REQUIRED` en REST y socket.
+- [ ] Refresh single-flight + `chat.general.reautenticar` tras cada refresh.
+- [ ] Listo al recibir `presencia`; buffer de eventos hasta hidratar.
+- [ ] Orden por `seq`, merge por `version`, swap optimista por `clientMessageId`.
+- [ ] Reconexión con `/updates?since=` (solape 5 s) paginando hasta `hasMore=false`.
+- [ ] Typing con throttle TTL/2, `false` al enviar/vaciar, expiración local por `expiresInMs`.
+- [ ] `PUT /read` con debounce; divisor "nuevos"; ticks con `readStates` + `lectura`.
+- [ ] Editar solo propios dentro de `limits.editWindowSeconds`; borrar propios (Admin: todos).
+- [ ] Reacciones del allowlist `state.reactions`; una por usuario.
+- [ ] Texto renderizado como texto plano; 429 con `Retry-After`.
 
-**Verificación**
+**Verificación manual**
 
-- [ ] Dos navegadores/usuarios: A envía → B ve el mensaje en vivo sin recargar.
-- [ ] Cerrar la red de A 30 s, mandar mensajes desde B, restaurar → A los recupera.
-- [ ] Esperar > 15 min con el chat abierto, forzar reconexión → vuelve a conectar con token renovado.
-- [ ] Apagar el flag en staging → la UI muestra "chat no disponible" sin bucles de reconexión.
+- [ ] Dos navegadores: enviar, responder, editar, reaccionar, borrar → el otro lo ve animado sin recargar.
+- [ ] Cortar la red de uno 30 s mientras el otro edita y borra → al volver queda igual que el otro.
+- [ ] Dejar el chat abierto más de 15 min → sigue conectado (reautenticación) sin parpadeo de presencia.
+- [ ] Usuario sin avatar → selector; tras elegir, entra al chat y los demás ven su avatar.

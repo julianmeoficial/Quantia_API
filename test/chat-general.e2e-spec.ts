@@ -73,6 +73,7 @@ describe('Chat General REST (e2e)', () => {
         email,
         fullName: 'Chat Researcher',
         passwordHash: await argon2.hash(password),
+        avatar: 'AVATAR_01',
         userRoles: {
           create: [{ roleId: byName[RoleName.INVESTIGADOR] }],
         },
@@ -271,6 +272,7 @@ describe('Chat General REST rate limit (e2e)', () => {
         email,
         fullName: 'Rate Limit User',
         passwordHash: await argon2.hash(password),
+        avatar: 'AVATAR_01',
         userRoles: {
           create: [{ roleId: byName[RoleName.INVESTIGADOR] }],
         },

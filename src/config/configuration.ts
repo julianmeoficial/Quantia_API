@@ -72,7 +72,7 @@ export default (): EnvConfig => ({
   HTTP_JSON_MAX_DEPTH: Number(process.env.HTTP_JSON_MAX_DEPTH ?? 10),
 
   WS_MAX_CONNECTIONS_PER_USER: Number(
-    process.env.WS_MAX_CONNECTIONS_PER_USER ?? 5,
+    process.env.WS_MAX_CONNECTIONS_PER_USER ?? 10,
   ),
   WS_MAX_EVENTS_PER_SECOND: Number(process.env.WS_MAX_EVENTS_PER_SECOND ?? 30),
   WS_IDLE_TIMEOUT_MS: Number(process.env.WS_IDLE_TIMEOUT_MS ?? 60_000),
@@ -81,7 +81,10 @@ export default (): EnvConfig => ({
     process.env.SECURITY_ALERT_401_403_THRESHOLD ?? 50,
   ),
 
+  // Enabled unless explicitly turned off (kill switch: CHAT_GENERAL_ENABLED=false).
   CHAT_GENERAL_ENABLED:
+    process.env.CHAT_GENERAL_ENABLED === undefined ||
+    process.env.CHAT_GENERAL_ENABLED === '' ||
     process.env.CHAT_GENERAL_ENABLED === 'true' ||
     process.env.CHAT_GENERAL_ENABLED === '1',
   CHAT_GENERAL_ROOM: process.env.CHAT_GENERAL_ROOM ?? 'general',
@@ -101,4 +104,13 @@ export default (): EnvConfig => ({
     process.env.CHAT_GENERAL_HEARTBEAT_SECONDS ?? 20,
   ),
   CHAT_GENERAL_RATE_LIMIT: Number(process.env.CHAT_GENERAL_RATE_LIMIT ?? 20),
+  CHAT_GENERAL_EDIT_WINDOW_SECONDS: Number(
+    process.env.CHAT_GENERAL_EDIT_WINDOW_SECONDS ?? 172_800,
+  ),
+  CHAT_GENERAL_TYPING_TTL_MS: Number(
+    process.env.CHAT_GENERAL_TYPING_TTL_MS ?? 6_000,
+  ),
+  CHAT_GENERAL_TOKEN_GRACE_SECONDS: Number(
+    process.env.CHAT_GENERAL_TOKEN_GRACE_SECONDS ?? 30,
+  ),
 });

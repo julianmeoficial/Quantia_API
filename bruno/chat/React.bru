@@ -1,0 +1,21 @@
+meta {
+  name: React
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{baseUrl}}/api/v1/chat/general/messages/{{messageId}}/reaction
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "emoji": "🔥"
+  }
+}

@@ -17,10 +17,12 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { RoleName } from '@quantia/contracts';
+import { AVATAR_CATALOG, RoleName } from '@quantia/contracts';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../common/interfaces/jwt-payload.interface';
+import { AvatarCatalogResponseDto, UpdateMyAvatarDto } from './dto/avatar.dto';
+import { UserResponseDto } from './dto/user-response.dto';
 import { PaginatedUserDirectoryResponseDto } from './dto/paginated-user-directory-response.dto';
 import { UserDirectoryQueryDto } from './dto/user-directory-query.dto';
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
@@ -34,8 +36,30 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get('me')
+  @ApiOkResponse({ type: UserResponseDto })
   me(@CurrentUser() user: AuthenticatedUser) {
     return this.usersService.findById(user.id);
+  }
+
+  @Patch('me/avatar')
+  @ApiOperation({
+    summary: 'Choose one of the 5 predefined avatars (required for chat)',
+    description:
+      'Photo uploads are not supported. Any authenticated user can change it at any time.',
+  })
+  @ApiOkResponse({ type: UserResponseDto })
+  updateMyAvatar(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateMyAvatarDto,
+  ): Promise<UserResponseDto> {
+    return this.usersService.updateAvatar(user.id, dto.avatar);
+  }
+
+  @Get('avatars')
+  @ApiOperation({ summary: 'Catalog of predefined avatars' })
+  @ApiOkResponse({ type: AvatarCatalogResponseDto })
+  avatars(): AvatarCatalogResponseDto {
+    return { items: AVATAR_CATALOG.map((option) => ({ ...option })) };
   }
 
   @Get()

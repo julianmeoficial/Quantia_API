@@ -1,0 +1,19 @@
+meta {
+  name: Delete Message
+  type: http
+  seq: 10
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/chat/general/messages/{{messageId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  Author or ADMINISTRADOR. Idempotent 204.
+}

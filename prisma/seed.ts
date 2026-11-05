@@ -1,5 +1,6 @@
 import {
   AuditResult,
+  type AvatarKey,
   BudgetExecutionKind,
   DocumentStatus,
   PrismaClient,
@@ -33,24 +34,28 @@ const users = [
     fullName: 'Admin Local',
     password: 'AdminPass1!',
     role: RoleName.ADMINISTRADOR,
+    avatar: 'AVATAR_01' as AvatarKey | null,
   },
   {
     email: 'coord@quantia.local',
     fullName: 'Coordinador Local',
     password: 'CoordPass1!',
     role: RoleName.COORDINADOR,
+    avatar: 'AVATAR_02' as AvatarKey | null,
   },
   {
     email: 'researcher@quantia.local',
     fullName: 'Investigador A',
     password: 'ResearchPass1!',
     role: RoleName.INVESTIGADOR,
+    avatar: 'AVATAR_03' as AvatarKey | null,
   },
   {
     email: 'researcher-b@quantia.local',
     fullName: 'Investigador B',
     password: 'ResearchPass1!',
     role: RoleName.INVESTIGADOR,
+    avatar: null as AvatarKey | null,
   },
 ] as const;
 
@@ -73,9 +78,12 @@ async function main(): Promise<void> {
           create: [{ roleId: role.id }],
         },
       },
+      // Avatar only on first create: a user's own choice survives re-seeding.
+      // researcher-b starts without one to exercise the mandatory picker.
       create: {
         email: entry.email,
         fullName: entry.fullName,
+        avatar: entry.avatar,
         passwordHash,
         userRoles: {
           create: [{ roleId: role.id }],

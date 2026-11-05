@@ -48,8 +48,17 @@ Related: [`handoff-security.md`](./handoff-security.md) · S1 threat model [`../
 | `POST` | `/projects/:projectId/reports` | JWT | Enqueues BullMQ; 202 |
 | `GET` | `/projects/:projectId/reports/:reportId` | JWT | Status + signed URL when ready |
 | `POST` | `/webhooks/notion` | `@Public` | verification_token or HMAC `X-Notion-Signature` |
-| `POST` | `/chat/general/messages` | JWT | Any authenticated; 201/200 idempotent; gated by `CHAT_GENERAL_ENABLED` |
-| `GET` | `/chat/general/messages` | JWT | Cursor history (`cursor`/`limit`); see [`chat-general.md`](./chat-general.md) · closure [`chat-general-closure.md`](./chat-general-closure.md) |
+| `GET` | `/users/avatars` | JWT | Any authenticated; catalog of 5 predefined avatars |
+| `PATCH` | `/users/me/avatar` | JWT | Any authenticated; `{ avatar }`; required before chat |
+| `GET` | `/chat/general/state` | JWT + avatar | Unread count, read pointers, limits, reactions |
+| `POST` | `/chat/general/messages` | JWT + avatar | Any authenticated; 201/200 idempotent (re-emits); `replyToId`; gated by `CHAT_GENERAL_ENABLED` |
+| `PATCH` | `/chat/general/messages/:messageId` | JWT + avatar | Author only, within `CHAT_GENERAL_EDIT_WINDOW_SECONDS` |
+| `DELETE` | `/chat/general/messages/:messageId` | JWT + avatar | Author or `ADMINISTRADOR`; soft delete, 204 idempotent |
+| `PUT` | `/chat/general/messages/:messageId/reaction` | JWT + avatar | `{ emoji }` from allowlist; one per user |
+| `DELETE` | `/chat/general/messages/:messageId/reaction` | JWT + avatar | Remove my reaction |
+| `PUT` | `/chat/general/read` | JWT + avatar | Monotonic read pointer `{ lastReadSeq }` |
+| `GET` | `/chat/general/updates` | JWT + avatar | Change feed (`since`/`cursor`), tombstones included |
+| `GET` | `/chat/general/messages` | JWT + avatar | Cursor history (`seq desc`) (`cursor`/`limit`); see [`chat-general.md`](./chat-general.md) · closure [`chat-general-closure.md`](./chat-general-closure.md) |
 
 Swagger UI: only when `NODE_ENV !== 'production'` at `/api/docs`. Staging Railway uses `NODE_ENV=production` → use committed OpenAPI / Bruno.
 
@@ -59,9 +68,9 @@ Swagger UI: only when `NODE_ENV !== 'production'` at `/api/docs`. Staging Railwa
 |-----------|------|-------|--------------------------|
 | `/projects` | JWT in `handshake.auth.token` | `projectId` (membership checked on `join`) | `tarea.actualizada`, `avance.registrado`, `proyecto.retrasado`, `presupuesto.ejecucion-baja` |
 | `/notifications` | JWT | `user:{userId}` | Same contract events (user-targeted) |
-| `/general` | JWT | fixed room `general` (auto-join) | `chat.general.presencia`, `chat.general.usuario-conectado`, `chat.general.usuario-desconectado`, `chat.general.mensaje-creado` |
+| `/general` | JWT + avatar chosen | fixed room `general` (auto-join) | `chat.general.presencia`, `.usuario-conectado`, `.usuario-desconectado`, `.usuario-actualizado`, `.mensaje-creado`, `.mensaje-editado`, `.mensaje-eliminado`, `.reacciones-actualizadas`, `.escribiendo`, `.lectura`, `error {code}` |
 
-Client → server: join project room (`joinProjectRoom` contract). Invalid JWT → disconnect before join. Redis adapter for fan-out.
+Client → server: join project room (`joinProjectRoom` contract); on `/general`: `chat.general.escribiendo { isTyping }` and `chat.general.reautenticar { token }` (acked, rate-limited by `WS_MAX_EVENTS_PER_SECOND`). Invalid JWT → disconnect before join. Redis adapter for fan-out.
 
 Contracts: [`packages/contracts/src/realtime.ts`](../../packages/contracts/src/realtime.ts).
 

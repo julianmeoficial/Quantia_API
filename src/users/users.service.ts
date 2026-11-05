@@ -3,8 +3,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { RoleName } from '@quantia/contracts';
+import { ConfigService } from '@nestjs/config';
+import { type AvatarKey, RoleName } from '@quantia/contracts';
 import { SyncEntityType } from '@prisma/client';
+import type { EnvConfig } from '../config/env.schema';
+import { RealtimeEmitter } from '../realtime/realtime-emitter.service';
 import { hashPassword } from '../auth/password.util';
 import {
   buildPaginatedResult,
@@ -22,7 +25,34 @@ export class UsersService {
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly notionSync: NotionSyncEnqueueService,
+    private readonly realtime: RealtimeEmitter,
+    private readonly config: ConfigService<EnvConfig, true>,
   ) {}
+
+  /**
+   * Sets one of the predefined avatars. Not synced to Notion (chat-only field).
+   * Broadcasts `chat.general.usuario-actualizado` so open chats refresh the card.
+   */
+  async updateAvatar(id: string, avatar: AvatarKey): Promise<UserResponseDto> {
+    const existing = await this.usersRepository.findById(id);
+    if (!existing || !existing.isActive) {
+      throw new NotFoundException('User not found');
+    }
+    const user =
+      existing.avatar === avatar
+        ? existing
+        : await this.usersRepository.updateAvatar(id, avatar);
+    if (
+      existing.avatar !== avatar &&
+      this.config.get('CHAT_GENERAL_ENABLED', { infer: true })
+    ) {
+      await this.realtime.emitChatGeneralUsuarioActualizado({
+        user: { id: user.id, name: user.fullName, avatar, avatarUrl: null },
+        occurredAt: new Date().toISOString(),
+      });
+    }
+    return this.toResponse(user);
+  }
 
   async create(dto: CreateUserDto): Promise<UserResponseDto> {
     const existing = await this.usersRepository.findByEmail(dto.email);
@@ -148,6 +178,8 @@ export class UsersService {
       fullName: user.fullName,
       isActive: user.isActive,
       roles: user.userRoles.map((ur): RoleName => ur.role.name),
+      avatar: user.avatar,
+      avatarRequired: user.avatar === null,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
     };

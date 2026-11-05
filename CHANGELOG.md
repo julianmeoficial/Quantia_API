@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Chat General v2 (estilo Telegram):** avatar obligatorio de 5 predefinidos (`GET /users/avatars`, `PATCH /users/me/avatar`; sin subida de fotos; `GET /users/me` expone `avatar` y `avatarRequired`); respuestas (`replyToId`), edición con ventana (`PATCH`), borrado con tombstone y moderación Admin (`DELETE`), reacciones de un allowlist con una por usuario (`PUT`/`DELETE …/reaction`), punteros de lectura y no leídos (`PUT /chat/general/read`, `GET /chat/general/state`), feed de cambios para reconexión (`GET /chat/general/updates`), `seq`/`version` en cada mensaje, typing y reautenticación por socket con ack, `lastSeenAt`. Eventos nuevos `chat.general.mensaje-editado`, `.mensaje-eliminado`, `.reacciones-actualizadas`, `.escribiendo`, `.lectura`, `.usuario-actualizado`. Migración aditiva `20261105000000_chat_general_v2_avatars`. Contracts 0.8.0. Guía: [`docs/development/chat-e2e-integration.md`](docs/development/chat-e2e-integration.md).
+- Cuerpo de error HTTP con `code` opcional y estable (p. ej. `AVATAR_REQUIRED`).
+
+### Changed
+
+- `CHAT_GENERAL_ENABLED` pasa a **`true` por defecto** (sigue siendo kill switch con `false`).
+- `WS_MAX_CONNECTIONS_PER_USER` default 5 → 10.
+- Historial del chat ordenado y paginado por `seq` (cursor opaco nuevo; los cursores antiguos dejan de ser válidos).
+- `PresenceUser` incluye `avatar`; `avatarUrl` queda deprecado (siempre `null`).
+
+### Fixed
+
+- Contadores de sockets "fantasma" tras redeploys/crash que bloqueaban con `Too many connections` (ZSET con heartbeat + `enableShutdownHooks()`).
+- Mensaje persistido cuyo fanout falló: el reintento idempotente ahora re-emite `mensaje-creado`.
+- Socket `/general` seguía recibiendo mensajes con el JWT vencido o el usuario desactivado: se cierra a `exp` + gracia salvo reautenticación.
+- OpenAPI sin schemas de respuesta en las rutas del chat.
+
 ## [0.1.0] - 2026-10-22
 
 ### Changed

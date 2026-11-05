@@ -44,6 +44,27 @@ end
 return 0
 `;
 
+/**
+ * Typing ZSET (member=userId, score=expiresAtMs).
+ * Returns 1 when the change must be broadcast: user was not typing, or the
+ * last broadcast is older than refreshMs (keeps remote timers alive without
+ * fanning out every keystroke).
+ */
+const TYPING_LUA = `
+local key = KEYS[1]
+local userId = ARGV[1]
+local now = tonumber(ARGV[2])
+local ttl = tonumber(ARGV[3])
+local refresh = tonumber(ARGV[4])
+local old = redis.call('ZSCORE', key, userId)
+redis.call('ZADD', key, now + ttl, userId)
+if not old then return 1 end
+old = tonumber(old)
+if old <= now then return 1 end
+if (old - now) <= (ttl - refresh) then return 1 end
+return 0
+`;
+
 @Injectable()
 export class ChatGeneralPresenceService
   implements OnModuleInit, OnModuleDestroy
@@ -102,6 +123,10 @@ export class ChatGeneralPresenceService
     return `${PREFIX}:socket:${socketId}`;
   }
 
+  private typingKey(): string {
+    return `${PREFIX}:typing`;
+  }
+
   private lockKey(): string {
     return `${PREFIX}:reconcile:lock`;
   }
@@ -117,6 +142,10 @@ export class ChatGeneralPresenceService
     client.defineCommand('chatGeneralLeave', {
       numberOfKeys: 3,
       lua: LEAVE_LUA,
+    });
+    client.defineCommand('chatGeneralTyping', {
+      numberOfKeys: 1,
+      lua: TYPING_LUA,
     });
     this.luaReady = true;
   }
@@ -170,11 +199,68 @@ export class ChatGeneralPresenceService
     );
     this.localSockets.delete(socketId);
     if (becameOffline === 1) {
+      const user = await this.loadPresenceUser(userId);
+      if (user) await this.stopTyping(user);
+      const now = new Date().toISOString();
       await this.realtime.emitChatGeneralUsuarioDesconectado({
         userId,
-        occurredAt: new Date().toISOString(),
+        occurredAt: now,
+        lastSeenAt: now,
       });
     }
+  }
+
+  typingTtlMs(): number {
+    return this.config.get('CHAT_GENERAL_TYPING_TTL_MS', { infer: true });
+  }
+
+  /** Marks `user` as typing; broadcasts only on start or periodic refresh. */
+  async startTyping(user: PresenceUser): Promise<boolean> {
+    await this.ensureLua();
+    const ttl = this.typingTtlMs();
+    const client = this.redis.getClient() as unknown as RedisWithChatCommands;
+    const broadcast = Number(
+      await client.chatGeneralTyping(
+        this.typingKey(),
+        user.id,
+        Date.now(),
+        ttl,
+        Math.floor(ttl / 3),
+      ),
+    );
+    if (broadcast === 1) {
+      await this.realtime.emitChatGeneralEscribiendo({
+        user,
+        isTyping: true,
+        expiresInMs: ttl,
+      });
+      return true;
+    }
+    return false;
+  }
+
+  async stopTyping(user: PresenceUser): Promise<boolean> {
+    await this.redis.connect();
+    const removed = await this.redis
+      .getClient()
+      .zrem(this.typingKey(), user.id);
+    if (removed > 0) {
+      await this.realtime.emitChatGeneralEscribiendo({
+        user,
+        isTyping: false,
+        expiresInMs: 0,
+      });
+      return true;
+    }
+    return false;
+  }
+
+  async listTypingUsers(): Promise<PresenceUser[]> {
+    await this.redis.connect();
+    const ids = await this.redis
+      .getClient()
+      .zrangebyscore(this.typingKey(), Date.now(), '+inf');
+    return this.resolvePresenceUsers(ids);
   }
 
   async listOnlineUserIds(): Promise<string[]> {
@@ -182,22 +268,37 @@ export class ChatGeneralPresenceService
     return this.redis.getClient().zrange(this.usersKey(), 0, -1);
   }
 
-  async buildPresenceSnapshot(): Promise<{
+  async buildPresenceSnapshot(tokenExpiresAt: string | null = null): Promise<{
     users: PresenceUser[];
     generatedAt: string;
+    typing: PresenceUser[];
+    tokenExpiresAt: string | null;
   }> {
     const ids = await this.listOnlineUserIds();
-    const users = await this.resolvePresenceUsers(ids);
-    return { users, generatedAt: new Date().toISOString() };
+    const [users, typing] = await Promise.all([
+      this.resolvePresenceUsers(ids),
+      this.listTypingUsers(),
+    ]);
+    return {
+      users,
+      generatedAt: new Date().toISOString(),
+      typing,
+      tokenExpiresAt,
+    };
   }
 
   private async loadPresenceUser(userId: string): Promise<PresenceUser | null> {
     const user = await this.prisma.user.findFirst({
       where: { id: userId, isActive: true },
-      select: { id: true, fullName: true },
+      select: { id: true, fullName: true, avatar: true },
     });
     if (!user) return null;
-    return { id: user.id, name: user.fullName, avatarUrl: null };
+    return {
+      id: user.id,
+      name: user.fullName,
+      avatar: user.avatar,
+      avatarUrl: null,
+    };
   }
 
   private async resolvePresenceUsers(
@@ -206,13 +307,18 @@ export class ChatGeneralPresenceService
     if (userIds.length === 0) return [];
     const rows = await this.prisma.user.findMany({
       where: { id: { in: userIds }, isActive: true },
-      select: { id: true, fullName: true },
+      select: { id: true, fullName: true, avatar: true },
     });
     const byId = new Map(rows.map((u) => [u.id, u]));
     return userIds
       .map((id) => byId.get(id))
-      .filter((u): u is { id: string; fullName: string } => u != null)
-      .map((u) => ({ id: u.id, name: u.fullName, avatarUrl: null }));
+      .filter((u): u is (typeof rows)[number] => u != null)
+      .map((u) => ({
+        id: u.id,
+        name: u.fullName,
+        avatar: u.avatar,
+        avatarUrl: null,
+      }));
   }
 
   /**
@@ -259,6 +365,7 @@ export class ChatGeneralPresenceService
     if (locked !== 'OK') return;
 
     try {
+      await client.zremrangebyscore(this.typingKey(), '-inf', Date.now());
       const staleBefore = Date.now() - ttlMs;
       const staleUserIds = await client.zrangebyscore(
         this.usersKey(),
@@ -285,6 +392,13 @@ export class ChatGeneralPresenceService
 }
 
 type RedisWithChatCommands = {
+  chatGeneralTyping: (
+    typingKey: string,
+    userId: string,
+    now: number,
+    ttl: number,
+    refreshMs: number,
+  ) => Promise<number>;
   chatGeneralJoin: (
     socketKey: string,
     socketsKey: string,
