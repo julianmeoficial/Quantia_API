@@ -136,23 +136,27 @@ Request:
 }
 ```
 
-Response **201** (primera vez) / **200** (idempotente con el mismo `clientMessageId`):
+Response **201** (primera vez) / **200** (idempotente con el mismo `clientMessageId`). El mensaje viene **envuelto en `{ message }`** (ver `ChatGeneralController.create` y `test/chat-general.e2e-spec.ts`):
 
 ```json
 {
-  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "content": "Hola semillero",
-  "clientMessageId": "client-msg-001",
-  "createdAt": "2026-09-25T20:00:00.000Z",
-  "author": {
-    "id": "11111111-2222-3333-4444-555555555555",
-    "name": "Ana Investigadora",
-    "avatarUrl": null
+  "message": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "content": "Hola semillero",
+    "clientMessageId": "client-msg-001",
+    "createdAt": "2026-09-25T20:00:00.000Z",
+    "author": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "name": "Ana Investigadora",
+      "avatarUrl": null
+    }
   }
 }
 ```
 
-Tras persistir, el servidor emite `chat.general.mensaje-creado` a la room `general` con `{ message: <mismo DTO> }`.
+Tras persistir, el servidor emite `chat.general.mensaje-creado` a la room `general` con `{ message: <mismo DTO> }` (el emisor también lo recibe). El replay idempotente (200) **no** vuelve a emitir.
+
+Guía para conectar un cliente de punta a punta: [`../development/chat-e2e-integration.md`](../development/chat-e2e-integration.md).
 
 ### Ejemplo `GET /api/v1/chat/general/messages?limit=2`
 
