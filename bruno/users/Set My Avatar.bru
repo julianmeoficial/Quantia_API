@@ -1,0 +1,25 @@
+meta {
+  name: Set My Avatar
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/users/me/avatar
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "avatar": "AVATAR_01"
+  }
+}
+
+docs {
+  Required before using the chat (403 AVATAR_REQUIRED otherwise).
+}

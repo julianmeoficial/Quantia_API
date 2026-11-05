@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { RoleName as ContractRoleName } from '@quantia/contracts';
-import { Prisma } from '@prisma/client';
+import { type AvatarKey, Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 
 const userWithRoles = Prisma.validator<Prisma.UserDefaultArgs>()({
@@ -127,6 +127,14 @@ export class UsersRepository {
         },
         include: userWithRoles.include,
       });
+    });
+  }
+
+  updateAvatar(id: string, avatar: AvatarKey): Promise<UserWithRoles> {
+    return this.prisma.user.update({
+      where: { id },
+      data: { avatar },
+      include: userWithRoles.include,
     });
   }
 

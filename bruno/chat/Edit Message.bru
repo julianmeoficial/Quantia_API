@@ -1,0 +1,21 @@
+meta {
+  name: Edit Message
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/chat/general/messages/{{messageId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "content": "Hola semillero (editado)"
+  }
+}

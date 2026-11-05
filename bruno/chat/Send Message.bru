@@ -1,0 +1,32 @@
+meta {
+  name: Send Message
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/chat/general/messages
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "content": "Hola semillero",
+    "clientMessageId": "bruno-{{$timestamp}}"
+  }
+}
+
+script:post-response {
+  if (res.body && res.body.message) {
+    bru.setEnvVar("messageId", res.body.message.id);
+  }
+}
+
+docs {
+  201 create / 200 idempotent replay. Stores messageId.
+}

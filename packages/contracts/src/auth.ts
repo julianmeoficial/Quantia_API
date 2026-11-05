@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { avatarKeySchema } from './avatars';
 
 export const RoleName = {
   INVESTIGADOR: 'INVESTIGADOR',
@@ -44,6 +45,10 @@ export const userResponseSchema = z.object({
   fullName: z.string(),
   isActive: z.boolean(),
   roles: z.array(roleNameSchema),
+  /** One of the 5 predefined avatars; `null` until the user picks one. */
+  avatar: avatarKeySchema.nullable(),
+  /** True while `avatar` is null — the frontend must show the picker (chat is blocked). */
+  avatarRequired: z.boolean(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

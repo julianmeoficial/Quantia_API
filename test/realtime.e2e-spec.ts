@@ -91,6 +91,7 @@ describe('Realtime Socket.io (e2e)', () => {
         email: 'rt-researcher@quantia.local',
         fullName: 'RT Researcher',
         passwordHash: await argon2.hash(password),
+        avatar: 'AVATAR_01',
         userRoles: {
           create: [{ roleId: byName[RoleName.INVESTIGADOR] }],
         },
@@ -103,6 +104,7 @@ describe('Realtime Socket.io (e2e)', () => {
         email: 'rt-observer@quantia.local',
         fullName: 'RT Observer',
         passwordHash: await argon2.hash(password),
+        avatar: 'AVATAR_01',
         userRoles: {
           create: [{ roleId: byName[RoleName.INVESTIGADOR] }],
         },
@@ -363,14 +365,22 @@ describe('Realtime Socket.io (e2e)', () => {
     await emitter.emitChatGeneralMensajeCreado({
       message: {
         id: '66666666-6666-4666-8666-666666666666',
+        seq: 1,
+        version: 1,
         content: 'desde bridge',
         clientMessageId: null,
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        editedAt: null,
+        deletedAt: null,
         author: {
           id: '77777777-7777-4777-8777-777777777777',
           name: 'Bridge',
+          avatar: 'AVATAR_01',
           avatarUrl: null,
         },
+        replyTo: null,
+        reactions: [],
       },
     });
 

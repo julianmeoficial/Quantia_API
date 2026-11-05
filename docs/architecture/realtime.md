@@ -13,7 +13,9 @@ Dashboards vivos (RF-12, RF-13). El gateway vive en el **mismo proceso** que la 
 ## Auth
 
 - Cliente envía el access JWT en `handshake.auth.token` (mismo secreto F1).
-- Token ausente/inválido → `disconnect` inmediato, antes de cualquier `join`.
+- Token ausente/inválido → `disconnect` inmediato, antes de cualquier `join`. En `/general` se emite antes `error { code, message }` (`UNAUTHORIZED`, `AVATAR_REQUIRED`, `CHAT_DISABLED`, `TOO_MANY_CONNECTIONS`).
+- `/general` cierra el socket al vencer el JWT (+ `CHAT_GENERAL_TOKEN_GRACE_SECONDS`) salvo que el cliente envíe `chat.general.reautenticar { token }`.
+- Límite por usuario `WS_MAX_CONNECTIONS_PER_USER` (default 10) en ZSET `ws:conn:v2:<userId>` con heartbeat: los sockets de réplicas caídas expiran en ~90 s. La API usa `enableShutdownHooks()` para liberarlos al recibir `SIGTERM`.
 - En `/projects`, el cliente emite `join` con `{ projectId }`; el servidor valida con `ProjectAccessService` y responde `joined`.
 
 ## Eventos de contrato
@@ -26,7 +28,7 @@ Solo estos nombres llegan al frontend (`@quantia/contracts`):
 | `avance.registrado` | ProgressService create/update; Notion→DB sync de avances |
 | `proyecto.retrasado` | ProjectsService update cuando `status === DELAYED`; Notion sync |
 | `presupuesto.ejecucion-baja` | Emitter listo; callers de dominio en F5 |
-| `chat.general.*` | Ver [`chat-general.md`](./chat-general.md) |
+| `chat.general.*` | ChatGeneralService / presencia / UsersService (avatar). Lista completa (10 eventos + `error`, y 2 eventos cliente→servidor con ack) en [`chat-general.md`](./chat-general.md#contratos) |
 
 ## Fanout worker → clientes
 

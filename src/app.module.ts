@@ -82,8 +82,13 @@ import { UsersModule } from './users/users.module';
               }>();
               const method = (req.method ?? '').toUpperCase();
               const url = String(req.url ?? '');
+              // Sends, edits and deletes share the budget; reactions/read/history do not.
+              const isWrite =
+                method === 'POST' || method === 'PATCH' || method === 'DELETE';
               return (
-                method !== 'POST' || !url.includes('/chat/general/messages')
+                !isWrite ||
+                !url.includes('/chat/general/messages') ||
+                url.includes('/reaction')
               );
             },
           },

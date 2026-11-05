@@ -34,7 +34,7 @@ El frontend (Vercel) solo habla HTTPS/WSS con esta API. **No** usa `service_role
 | Presupuesto                  | Ejecución financiera **solo en Postgres** (nunca en Notion)                                                       |
 | Documentos e informes        | Storage privado + URLs firmadas; generación async en worker                                                       |
 | Auditoría                    | Logs insert-only                                                                                                  |
-| Chat General                 | Canal autenticado del semillero (flag `CHAT_GENERAL_ENABLED`)                                                     |
+| Chat General                 | Canal autenticado del semillero estilo Telegram (v2: avatares, editar/borrar, reacciones, typing, leídos); activo por defecto |
 
 **Fuera de este informe (pero documentado aparte):** UI Vercel; ofensiva remota contra staging (el pentest P0–P6 fue laboratorio local).
 
@@ -153,7 +153,7 @@ Toda query con `id` de proyecto filtra por membresía (o rol Admin). No se conf�
 |-----------|-------|-----|
 | `/projects` | por `projectId` (join con membresía) | Eventos de dominio del proyecto |
 | `/notifications` | `user:{userId}` | Notificaciones al usuario |
-| `/general` | room `general` | Chat del semillero + presencia |
+| `/general` | room `general` | Chat del semillero: presencia, mensajes (creado/editado/eliminado), reacciones, typing, lecturas, avatar |
 
 Fanout: `RealtimeEmitter` → canal Redis `quantia:realtime` → bridge en instancias API.
 
@@ -193,6 +193,8 @@ Handoff canónico: [`handoff-security.md`](./architecture/handoff-security.md).
 3. `Authorization: Bearer <accessToken>` en rutas protegidas
 4. Incluir el `Origin` del FE en `CORS_ORIGINS` de Railway (p. ej. `http://localhost:3000` o el puerto real; nunca `*`)
 5. Swagger UI **no** está montado con `NODE_ENV=production` → usar Bruno u OpenAPI
+6. Si `GET /users/me` trae `avatarRequired: true`, obligar a elegir avatar (`GET /users/avatars` → `PATCH /users/me/avatar`) antes de abrir el chat
+7. Chat en tiempo real (socket `/general`, reautenticación, reconexión, animaciones): [`development/chat-e2e-integration.md`](./development/chat-e2e-integration.md)
 
 ---
 
@@ -209,7 +211,11 @@ Inventario completo: [`inventory.md`](./architecture/inventory.md). OpenAPI: [`o
 | CRUD | `/api/v1/users` | JWT + Admin |
 | CRUD | `/api/v1/projects`, `.../tasks`, `.../progress` | JWT + membresía |
 | CRUD | `/api/v1/projects/:id/budget`, `.../documents`, `.../reports` | JWT (+ roles en mutaciones) |
-| `POST`/`GET` | `/api/v1/chat/general/messages` | JWT + flag |
+| `GET` / `PATCH` | `/api/v1/users/avatars` · `/api/v1/users/me/avatar` | JWT |
+| `GET` | `/api/v1/chat/general/state` · `/messages` · `/updates` | JWT + flag + avatar |
+| `POST` / `PATCH` / `DELETE` | `/api/v1/chat/general/messages[/:id]` | JWT + flag + avatar |
+| `PUT` / `DELETE` | `/api/v1/chat/general/messages/:id/reaction` | JWT + flag + avatar |
+| `PUT` | `/api/v1/chat/general/read` | JWT + flag + avatar |
 | `POST` | `/api/v1/webhooks/notion` | Público + verificación |
 
 ---

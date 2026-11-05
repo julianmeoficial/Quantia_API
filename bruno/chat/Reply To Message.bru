@@ -1,0 +1,22 @@
+meta {
+  name: Reply To Message
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/chat/general/messages
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "content": "Respondiendo",
+    "replyToId": "{{messageId}}"
+  }
+}

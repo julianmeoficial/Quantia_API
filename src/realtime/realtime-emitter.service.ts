@@ -6,7 +6,13 @@ import {
   RealtimeNamespace,
   generalRoom,
   type AvanceRegistradoPayload,
+  type ChatGeneralEscribiendoPayload,
+  type ChatGeneralLecturaPayload,
   type ChatGeneralMensajeCreadoPayload,
+  type ChatGeneralMensajeEditadoPayload,
+  type ChatGeneralMensajeEliminadoPayload,
+  type ChatGeneralReaccionesActualizadasPayload,
+  type ChatGeneralUsuarioActualizadoPayload,
   type ChatGeneralUsuarioConectadoPayload,
   type ChatGeneralUsuarioDesconectadoPayload,
   type PresupuestoEjecucionBajaPayload,
@@ -82,30 +88,66 @@ export class RealtimeEmitter {
   async emitChatGeneralMensajeCreado(
     payload: ChatGeneralMensajeCreadoPayload,
   ): Promise<void> {
-    await this.publish({
-      event: ChatGeneralEvent.MENSAJE_CREADO,
-      namespace: RealtimeNamespace.GENERAL,
-      room: this.generalRoomName(),
+    await this.publishGeneral(ChatGeneralEvent.MENSAJE_CREADO, payload);
+  }
+
+  async emitChatGeneralMensajeEditado(
+    payload: ChatGeneralMensajeEditadoPayload,
+  ): Promise<void> {
+    await this.publishGeneral(ChatGeneralEvent.MENSAJE_EDITADO, payload);
+  }
+
+  async emitChatGeneralMensajeEliminado(
+    payload: ChatGeneralMensajeEliminadoPayload,
+  ): Promise<void> {
+    await this.publishGeneral(ChatGeneralEvent.MENSAJE_ELIMINADO, payload);
+  }
+
+  async emitChatGeneralReaccionesActualizadas(
+    payload: ChatGeneralReaccionesActualizadasPayload,
+  ): Promise<void> {
+    await this.publishGeneral(
+      ChatGeneralEvent.REACCIONES_ACTUALIZADAS,
       payload,
-    });
+    );
+  }
+
+  async emitChatGeneralEscribiendo(
+    payload: ChatGeneralEscribiendoPayload,
+  ): Promise<void> {
+    await this.publishGeneral(ChatGeneralEvent.ESCRIBIENDO, payload);
+  }
+
+  async emitChatGeneralLectura(
+    payload: ChatGeneralLecturaPayload,
+  ): Promise<void> {
+    await this.publishGeneral(ChatGeneralEvent.LECTURA, payload);
+  }
+
+  async emitChatGeneralUsuarioActualizado(
+    payload: ChatGeneralUsuarioActualizadoPayload,
+  ): Promise<void> {
+    await this.publishGeneral(ChatGeneralEvent.USUARIO_ACTUALIZADO, payload);
   }
 
   async emitChatGeneralUsuarioConectado(
     payload: ChatGeneralUsuarioConectadoPayload,
   ): Promise<void> {
-    await this.publish({
-      event: ChatGeneralEvent.USUARIO_CONECTADO,
-      namespace: RealtimeNamespace.GENERAL,
-      room: this.generalRoomName(),
-      payload,
-    });
+    await this.publishGeneral(ChatGeneralEvent.USUARIO_CONECTADO, payload);
   }
 
   async emitChatGeneralUsuarioDesconectado(
     payload: ChatGeneralUsuarioDesconectadoPayload,
   ): Promise<void> {
+    await this.publishGeneral(ChatGeneralEvent.USUARIO_DESCONECTADO, payload);
+  }
+
+  private async publishGeneral(
+    event: ChatGeneralEvent,
+    payload: unknown,
+  ): Promise<void> {
     await this.publish({
-      event: ChatGeneralEvent.USUARIO_DESCONECTADO,
+      event,
       namespace: RealtimeNamespace.GENERAL,
       room: this.generalRoomName(),
       payload,

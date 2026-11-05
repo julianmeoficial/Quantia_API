@@ -136,4 +136,16 @@ describe('HttpExceptionFilter', () => {
     expect(JSON.stringify(body)).not.toContain('secret_table');
     expect(body).not.toHaveProperty('stack');
   });
+  it('passes through a machine-readable code from HttpException bodies', () => {
+    const { status, body } = run(
+      new NotFoundException({ message: 'Chat off', code: 'CHAT_DISABLED' }),
+    );
+    expect(status).toBe(HttpStatus.NOT_FOUND);
+    expect(body).toMatchObject({ message: 'Chat off', code: 'CHAT_DISABLED' });
+  });
+
+  it('omits code when the exception has none', () => {
+    const { body } = run(new NotFoundException('nope'));
+    expect(body).not.toHaveProperty('code');
+  });
 });

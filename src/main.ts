@@ -24,6 +24,9 @@ async function bootstrap(): Promise<void> {
     bufferLogs: true,
   });
   app.useLogger(app.get(Logger));
+  // SIGTERM (Railway redeploys) → onModuleDestroy: releases socket counters,
+  // presence and typing state owned by this replica instead of orphaning them.
+  app.enableShutdownHooks();
 
   const configService = app.get(ConfigService<EnvConfig, true>);
   const bodyLimit = configService.get('HTTP_JSON_BODY_LIMIT', { infer: true });

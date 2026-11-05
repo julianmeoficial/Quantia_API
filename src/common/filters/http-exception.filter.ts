@@ -49,6 +49,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
     response.status(mapped.status).json({
       statusCode: mapped.status,
       message: mapped.message,
+      // Optional stable machine-readable code (e.g. AVATAR_REQUIRED); additive.
+      ...(mapped.code ? { code: mapped.code } : {}),
       path: request.url,
       timestamp: new Date().toISOString(),
     });
@@ -57,6 +59,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
   private mapException(exception: unknown): {
     status: number;
     message: string;
+    code?: string;
   } {
     if (exception instanceof MulterError) {
       if (exception.code === 'LIMIT_FILE_SIZE') {
@@ -92,7 +95,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
           ? rawMessage.join(', ')
           : rawMessage;
       }
-      return { status, message };
+      const code =
+        exceptionResponse &&
+        typeof exceptionResponse === 'object' &&
+        'code' in exceptionResponse &&
+        typeof exceptionResponse.code === 'string'
+          ? (exceptionResponse as { code: string }).code
+          : undefined;
+      return { status, message, code };
     }
 
     // express body-parser entity too large

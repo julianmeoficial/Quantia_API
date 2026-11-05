@@ -12,6 +12,7 @@ describe('UsersService', () => {
   const searchDirectory = jest.fn();
   const updateUser = jest.fn();
   const deleteUser = jest.fn();
+  const updateAvatarMock = jest.fn();
   const repository = {
     findByEmail: jest.fn(),
     findById: jest.fn(),
@@ -19,12 +20,20 @@ describe('UsersService', () => {
     searchDirectory,
     create: jest.fn(),
     update: updateUser,
+    updateAvatar: updateAvatarMock,
     delete: deleteUser,
   } as unknown as UsersRepository;
 
-  const service = new UsersService(repository, {
-    enqueueDbToNotion: jest.fn().mockResolvedValue(undefined),
-  } as never);
+  const emitChatGeneralUsuarioActualizado = jest
+    .fn()
+    .mockResolvedValue(undefined);
+  const chatEnabled = { value: true };
+  const service = new UsersService(
+    repository,
+    { enqueueDbToNotion: jest.fn().mockResolvedValue(undefined) } as never,
+    { emitChatGeneralUsuarioActualizado } as never,
+    { get: () => chatEnabled.value } as never,
+  );
 
   const sampleUser = {
     id: '11111111-1111-1111-1111-111111111111',
@@ -32,6 +41,7 @@ describe('UsersService', () => {
     passwordHash: 'hashed-password',
     fullName: 'Admin User',
     isActive: true,
+    avatar: null,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     updatedAt: new Date('2026-01-01T00:00:00.000Z'),
     userRoles: [
@@ -125,6 +135,8 @@ describe('UsersService', () => {
       fullName: sampleUser.fullName,
       isActive: true,
       roles: [RoleName.ADMINISTRADOR],
+      avatar: null,
+      avatarRequired: true,
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
     });
@@ -229,5 +241,58 @@ describe('UsersService', () => {
     await expect(
       service.update('missing', { fullName: 'X' }),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  describe('avatar', () => {
+    const withAvatar = {
+      ...sampleUser,
+      avatar: 'AVATAR_03',
+    } as unknown as UserWithRoles;
+
+    it('exposes avatarRequired while no avatar is chosen', () => {
+      expect(service.toResponse(sampleUser)).toMatchObject({
+        avatar: null,
+        avatarRequired: true,
+      });
+      expect(service.toResponse(withAvatar)).toMatchObject({
+        avatar: 'AVATAR_03',
+        avatarRequired: false,
+      });
+    });
+
+    it('updates the avatar and broadcasts usuario-actualizado', async () => {
+      (repository.findById as jest.Mock).mockResolvedValue(sampleUser);
+      updateAvatarMock.mockResolvedValue(withAvatar);
+      const res = await service.updateAvatar(sampleUser.id, 'AVATAR_03');
+      expect(updateAvatarMock).toHaveBeenCalledWith(sampleUser.id, 'AVATAR_03');
+      expect(res.avatarRequired).toBe(false);
+      expect(emitChatGeneralUsuarioActualizado).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user: {
+            id: sampleUser.id,
+            name: 'Admin User',
+            avatar: 'AVATAR_03',
+            avatarUrl: null,
+          },
+        }),
+      );
+    });
+
+    it('is a no-op when the avatar does not change', async () => {
+      (repository.findById as jest.Mock).mockResolvedValue(withAvatar);
+      await service.updateAvatar(sampleUser.id, 'AVATAR_03');
+      expect(updateAvatarMock).not.toHaveBeenCalled();
+      expect(emitChatGeneralUsuarioActualizado).not.toHaveBeenCalled();
+    });
+
+    it('404 for inactive users', async () => {
+      (repository.findById as jest.Mock).mockResolvedValue({
+        ...sampleUser,
+        isActive: false,
+      });
+      await expect(
+        service.updateAvatar(sampleUser.id, 'AVATAR_01'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
   });
 });

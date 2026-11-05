@@ -45,7 +45,7 @@ sequenceDiagram
   - Standard claims: `iss` (`JWT_ISSUER`, default `quantia-api`), `aud` (`JWT_AUDIENCE`, default `quantia-clients`), `exp`
   - Verification rejects `alg: none`, wrong algorithm, wrong `iss`/`aud`, expired tokens
 - **Refresh**: opaque random string; only **SHA-256 hash** stored; rotation on each refresh; reuse of a revoked token revokes the **family**
-- **WebSocket**: same access JWT via `handshake.auth.token`; membership checked before `socket.join()`
+- **WebSocket**: same access JWT via `handshake.auth.token`; membership checked before `socket.join()`. On `/general` the socket is closed at JWT `exp` + `CHAT_GENERAL_TOKEN_GRACE_SECONDS` unless the client sends `chat.general.reautenticar { token }` after refreshing
 
 ## Login hardening (S2)
 
@@ -75,7 +75,9 @@ Global HTTP rate limiting remains **S5**.
 | POST | `/auth/login` | `@Public()` |
 | POST | `/auth/refresh` | `@Public()` |
 | POST | `/auth/logout` | `@Public()` (body has refresh) |
-| GET | `/users/me` | JWT |
+| GET | `/users/me` | JWT (incluye `avatar` y `avatarRequired`) |
+| GET | `/users/avatars` | JWT (catálogo de 5 avatares predefinidos) |
+| PATCH | `/users/me/avatar` | JWT (`{ avatar }`; sin subida de fotos) |
 | GET/POST/PATCH/DELETE | `/users` | JWT + `@Roles(ADMINISTRADOR)` |
 
 Responses never include `passwordHash`.

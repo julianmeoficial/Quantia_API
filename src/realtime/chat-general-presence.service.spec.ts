@@ -10,7 +10,10 @@ describe('ChatGeneralPresenceService', () => {
     staleUserIds?: string[];
     socketMembers?: string[];
     socketExists?: number;
+    typingResults?: number[];
   }) {
+    const typingResults = overrides?.typingResults ?? [1];
+    let typingIdx = 0;
     const scardSequence = overrides?.scardSequence ?? [1];
     const leaveResults = overrides?.leaveResults ?? [1];
     let scardIdx = 0;
@@ -30,6 +33,10 @@ describe('ChatGeneralPresenceService', () => {
       chatGeneralLeave: jest.fn().mockImplementation(() => {
         return leaveResults[Math.min(leaveIdx++, leaveResults.length - 1)];
       }),
+      chatGeneralTyping: jest.fn().mockImplementation(() => {
+        return typingResults[Math.min(typingIdx++, typingResults.length - 1)];
+      }),
+      zremrangebyscore: jest.fn().mockResolvedValue(0),
       zrange: jest.fn().mockResolvedValue([]),
       zrangebyscore: jest.fn().mockResolvedValue(overrides?.staleUserIds ?? []),
       smembers: jest.fn().mockResolvedValue(overrides?.socketMembers ?? []),
@@ -57,6 +64,7 @@ describe('ChatGeneralPresenceService', () => {
           CHAT_GENERAL_PRESENCE_TTL_SECONDS: 60,
           CHAT_GENERAL_HEARTBEAT_SECONDS: 20,
           CHAT_GENERAL_ROOM: 'general',
+          CHAT_GENERAL_TYPING_TTL_MS: 6000,
         };
         return map[key];
       }),
@@ -66,6 +74,7 @@ describe('ChatGeneralPresenceService', () => {
         findFirst: jest.fn().mockResolvedValue({
           id: userId,
           fullName: 'Ana',
+          avatar: 'AVATAR_02',
         }),
         findMany: jest.fn().mockResolvedValue([]),
       },
@@ -75,6 +84,7 @@ describe('ChatGeneralPresenceService', () => {
       emitChatGeneralUsuarioDesconectado: jest
         .fn()
         .mockResolvedValue(undefined),
+      emitChatGeneralEscribiendo: jest.fn().mockResolvedValue(undefined),
     };
 
     const service = new ChatGeneralPresenceService(
@@ -190,5 +200,97 @@ describe('ChatGeneralPresenceService', () => {
       userId,
     );
     expect(client.chatGeneralLeave).not.toHaveBeenCalled();
+  });
+
+  it('usuario-conectado carries the chosen avatar', async () => {
+    const { service, realtime } = build({ scardSequence: [1] });
+    await service.join(userId, 'sock-a');
+    expect(realtime.emitChatGeneralUsuarioConectado).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user: { id: userId, name: 'Ana', avatar: 'AVATAR_02', avatarUrl: null },
+      }),
+    );
+  });
+
+  it('usuario-desconectado includes lastSeenAt and clears typing', async () => {
+    const { service, realtime } = build({ leaveResults: [1] });
+    await service.leave(userId, 'sock-a');
+    const payload = (
+      realtime.emitChatGeneralUsuarioDesconectado.mock.calls[0] as [
+        { lastSeenAt: string; occurredAt: string },
+      ]
+    )[0];
+    expect(payload.lastSeenAt).toBe(payload.occurredAt);
+    expect(realtime.emitChatGeneralEscribiendo).toHaveBeenCalledWith(
+      expect.objectContaining({ isTyping: false }),
+    );
+  });
+
+  const card = {
+    id: userId,
+    name: 'Ana',
+    avatar: 'AVATAR_02' as const,
+    avatarUrl: null,
+  };
+
+  it('startTyping broadcasts on start and throttles refreshes', async () => {
+    const { service, realtime, client } = build({ typingResults: [1, 0] });
+
+    await expect(service.startTyping(card)).resolves.toBe(true);
+    await expect(service.startTyping(card)).resolves.toBe(false);
+
+    expect(client.chatGeneralTyping).toHaveBeenCalledWith(
+      expect.stringContaining(':typing'),
+      userId,
+      expect.any(Number),
+      6000,
+      2000,
+    );
+    expect(realtime.emitChatGeneralEscribiendo).toHaveBeenCalledTimes(1);
+    expect(realtime.emitChatGeneralEscribiendo).toHaveBeenCalledWith({
+      user: card,
+      isTyping: true,
+      expiresInMs: 6000,
+    });
+  });
+
+  it('stopTyping broadcasts only when the user was typing', async () => {
+    const { service, realtime, client } = build();
+    client.zrem.mockResolvedValueOnce(0);
+    await expect(service.stopTyping(card)).resolves.toBe(false);
+    expect(realtime.emitChatGeneralEscribiendo).not.toHaveBeenCalled();
+
+    client.zrem.mockResolvedValueOnce(1);
+    await expect(service.stopTyping(card)).resolves.toBe(true);
+    expect(realtime.emitChatGeneralEscribiendo).toHaveBeenCalledWith({
+      user: card,
+      isTyping: false,
+      expiresInMs: 0,
+    });
+  });
+
+  it('presence snapshot includes typing users and token expiry', async () => {
+    const { service, prisma, client } = build();
+    client.zrange.mockResolvedValue([userId]);
+    client.zrangebyscore.mockResolvedValue([userId]);
+    prisma.user.findMany.mockResolvedValue([
+      { id: userId, fullName: 'Ana', avatar: 'AVATAR_02' },
+    ]);
+    const snap = await service.buildPresenceSnapshot(
+      '2026-01-01T00:15:00.000Z',
+    );
+    expect(snap.users).toEqual([card]);
+    expect(snap.typing).toEqual([card]);
+    expect(snap.tokenExpiresAt).toBe('2026-01-01T00:15:00.000Z');
+  });
+
+  it('reconcile prunes expired typing entries', async () => {
+    const { service, client } = build();
+    await service.runMaintenanceTick();
+    expect(client.zremrangebyscore).toHaveBeenCalledWith(
+      expect.stringContaining(':typing'),
+      '-inf',
+      expect.any(Number),
+    );
   });
 });

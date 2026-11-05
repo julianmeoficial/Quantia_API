@@ -1,8 +1,9 @@
-export const CONTRACTS_VERSION = '0.7.0';
+export const CONTRACTS_VERSION = '0.8.0';
 
 export * from './pagination';
 export * from './auth';
 export * from './users';
+export * from './avatars';
 export * from './http';
 export * from './projects';
 export * from './tasks';

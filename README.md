@@ -116,10 +116,15 @@ El worker consume las colas BullMQ `notion-sync` (`sync:notion-to-db`, `sync:db-
 
 | Método | Ruta / namespace | Acceso |
 |--------|-----------------|--------|
-| `POST` / `GET` | `/api/v1/chat/general/messages` | JWT; flag `CHAT_GENERAL_ENABLED` |
-| Socket.io | `/projects`, `/notifications`, `/general` | JWT en handshake |
+| `GET` / `PATCH` | `/api/v1/users/avatars` · `/api/v1/users/me/avatar` | JWT; avatar predefinido obligatorio para el chat |
+| `GET` | `/api/v1/chat/general/state` · `/messages` · `/updates` | JWT + avatar |
+| `POST` / `PATCH` / `DELETE` | `/api/v1/chat/general/messages[/:id]` | JWT + avatar (editar: autor; borrar: autor o Admin) |
+| `PUT` / `DELETE` | `/api/v1/chat/general/messages/:id/reaction` · `PUT /api/v1/chat/general/read` | JWT + avatar |
+| Socket.io | `/projects`, `/notifications`, `/general` (typing + reautenticación con ack) | JWT en handshake |
 
-Detalle: [`docs/architecture/chat-general.md`](docs/architecture/chat-general.md) · [`docs/architecture/realtime.md`](docs/architecture/realtime.md).
+Chat estilo Telegram: respuestas, edición, borrado, reacciones, "escribiendo…", en línea / última vez, no leídos y "visto por", reconexión sin huecos. Activo por defecto (`CHAT_GENERAL_ENABLED=false` lo apaga).
+
+Detalle: [`docs/development/chat-e2e-integration.md`](docs/development/chat-e2e-integration.md) (cómo conectar un cliente) · [`docs/architecture/chat-general.md`](docs/architecture/chat-general.md) · [`docs/architecture/realtime.md`](docs/architecture/realtime.md).
 
 ## Scripts
 
@@ -164,7 +169,7 @@ src/
   health/       GET /api/v1/health (@Public)
   worker.ts     Entry del worker (notion-sync + reports)
 packages/
-  contracts/    @quantia/contracts 0.7.0 (auth, users, http, domain, realtime, notion, budget, documents, reports, chat-general)
+  contracts/    @quantia/contracts 0.8.0 (auth, users, avatars, http, domain, realtime, notion, budget, documents, reports, chat-general)
 prisma/         Schema y migraciones
 test/           E2E
 docs/           Documentación técnica
@@ -227,6 +232,7 @@ GitHub Actions en cada PR y push a `main`:
 | S1–S6 | Endurecimiento OWASP/ASVS | Completado | ENG-117 |
 | P0–P6 | Verificación ofensiva (local / consola) | Completado | ENG-118 |
 | Chat General | Room autenticada del semillero | Completado | ENG-171 / ENG-172 / ENG-173 |
+| Chat General v2 | Avatares predefinidos, editar/borrar, reacciones, respuestas, typing, leídos, feed de cambios | En revisión (rama `feature/chat-general-telegram`) | — |
 
 **Congelamiento funcional** desde F7: solo fixes de seguridad y defectos. El pentest P0–P6 se ejecutó contra el lab local (Compose); staging queda fuera del alcance ofensivo (smoke no ofensivo documentado en P6).
 

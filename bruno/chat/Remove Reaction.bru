@@ -1,0 +1,15 @@
+meta {
+  name: Remove Reaction
+  type: http
+  seq: 7
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/chat/general/messages/{{messageId}}/reaction
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

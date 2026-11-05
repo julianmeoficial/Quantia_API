@@ -1,0 +1,25 @@
+meta {
+  name: Mark Read
+  type: http
+  seq: 8
+}
+
+put {
+  url: {{baseUrl}}/api/v1/chat/general/read
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "lastReadSeq": 999999
+  }
+}
+
+docs {
+  Clamped to the newest seq; only moves forward.
+}
