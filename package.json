@@ -95,7 +95,7 @@
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
-    "eslint-plugin-security": "^3.0.1",
+    "eslint-plugin-security": "^4.2.1",
     "file-type": "^16.5.4",
     "globals": "^17.0.0",
     "jest": "^30.0.0",
